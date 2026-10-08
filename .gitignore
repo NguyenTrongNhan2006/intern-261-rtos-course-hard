@@ -1,0 +1,28 @@
+# Mentor-only material — never pushed to student remotes
+mentor/
+*.xlsx
+
+# Generated per-student parameters
+**/include/params.h
+**/PARAMS.md
+
+# CMake / build output
+build/
+out/
+CMakeUserPresets.json
+*.o
+*.d
+*.bin
+*.hex
+*.map
+*.list
+# .elf is ignored except the W3.4 black-box target shipped to students
+*.elf
+!week3/ex4/*.elf
+
+# IDE
+.vscode/
+.settings/
+
+# LibreOffice lock files
+.~lock.*#
