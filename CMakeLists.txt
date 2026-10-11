@@ -29,6 +29,7 @@ add_executable(w1e1
     platform/system.c
     platform/gpio.c
     week1/ex1/main.c
+    week1/ex1/blinky.c
 )
 
 set_target_properties(w1e1 PROPERTIES
