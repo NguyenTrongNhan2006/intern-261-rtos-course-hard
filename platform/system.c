@@ -1,7 +1,7 @@
 #include "stm32f1xx.h"
 #include <stdint.h>
 
-uint32_t SystemCoreClock = 8000000u;
+uint32_t SystemCoreClock = 72000000u;
 
 void SystemInit(void)
 {

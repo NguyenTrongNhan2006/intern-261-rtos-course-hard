@@ -6,8 +6,8 @@ static void tag_gpio_init(void)
 {
     /* Bật clock GPIOB và AFIO. */
     RCC->APB2ENR |= RCC_APB2ENR_IOPBEN | RCC_APB2ENR_AFIOEN;
-
-    /* Tắt JTAG nhưng giữ SWD; các remap khác để mặc định. */
+  
+    // Cấu hình remap chân GPIOB pin 6 sang chức năng AFIO. */
     AFIO->MAPR = (2u << 24);
 
     gpio_config_output_pp_2mhz(
@@ -15,8 +15,20 @@ static void tag_gpio_init(void)
         W1E1_TAG_GPIO_PIN
     );
 
-    /* Bắt đầu ở mức LOW. */
-    gpio_clear(W1E1_TAG_GPIO_PORT, W1E1_TAG_GPIO_PIN);
+    /* Chuẩn bị output latch ở mức LOW. */
+gpio_clear(W1E1_TAG_GPIO_PORT, W1E1_TAG_GPIO_PIN);
+
+/* Sau đó mới bật output driver. */
+gpio_config_output_pp_2mhz(
+    W1E1_TAG_GPIO_PORT,
+    W1E1_TAG_GPIO_PIN
+);
+
+/* Sau đó mới bật output driver. */
+gpio_config_output_pp_2mhz(
+    W1E1_TAG_GPIO_PORT,
+    W1E1_TAG_GPIO_PIN
+);
 }
 
 int main(void)
