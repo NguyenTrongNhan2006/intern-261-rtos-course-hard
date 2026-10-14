@@ -26,7 +26,7 @@
 #define configUSE_IDLE_HOOK                 0
 #define configUSE_TICK_HOOK                 0
 #define configCHECK_FOR_STACK_OVERFLOW      0
-#define configUSE_MALLOC_FAILED_HOOK        0
+#define configUSE_MALLOC_FAILED_HOOK        1
 
 /* Interrupt priority của Cortex-M3. */
 #define configPRIO_BITS                     __NVIC_PRIO_BITS

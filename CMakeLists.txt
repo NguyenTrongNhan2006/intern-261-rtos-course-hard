@@ -66,18 +66,26 @@ target_include_directories(w1e1 PRIVATE
     third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
 )
 
-find_program(OPENOCD_EXECUTABLE NAMES openocd REQUIRED)
+find_program(OPENOCD_EXECUTABLE NAMES openocd)
 
-add_custom_target(w1e1_flash
-    COMMAND "${OPENOCD_EXECUTABLE}"
-        -f interface/stlink.cfg
-        -c "transport select swd"
-        -f target/stm32f1x.cfg
-        -c "adapter speed 950"
-        -c "program {$<TARGET_FILE:w1e1>} verify reset exit"
-    COMMENT "Flashing w1e1 with ST-Link"
-    VERBATIM
-    USES_TERMINAL
-)
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w1e1_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w1e1>} verify reset exit"
+        COMMENT "Flashing w1e1 with ST-Link"
+        VERBATIM
+        USES_TERMINAL
+    )
 
-add_dependencies(w1e1_flash w1e1)
+    add_dependencies(w1e1_flash w1e1)
+else()
+    message(STATUS
+        "OpenOCD not found: build available, w1e1_flash disabled"
+    )
+endif()
+

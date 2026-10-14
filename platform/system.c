@@ -1,70 +1,98 @@
 #include "stm32f1xx.h"
 #include <stdint.h>
 
-uint32_t SystemCoreClock = 72000000u;
+/* Sau reset, STM32F103 sử dụng HSI 8 MHz. */
+uint32_t SystemCoreClock = 8000000u;
 
 void SystemInit(void)
 {
     uint32_t timeout;
 
-    /* Bật HSE 8 MHz và chờ sẵn sàng. */
-    RCC->CR |= (1u << 16);
+    /* 1. Bật HSE: board sử dụng thạch anh ngoài 8 MHz. */
+    RCC->CR |= RCC_CR_HSEON;
+
     timeout = 1000000u;
-    while ((RCC->CR & (1u << 17)) == 0u) {
+
+    while ((RCC->CR & RCC_CR_HSERDY) == 0u) {
         if (timeout-- == 0u) {
             for (;;) {
-                /* Dừng nếu thạch anh HSE không khởi động. */
+                /* HSE không khởi động được. */
             }
         }
     }
 
     /*
-     * Flash: bật prefetch và đặt 2 wait state
-     * trước khi chuyển CPU lên 72 MHz.
+     * 2. Cấu hình Flash trước khi tăng clock:
+     *    - Prefetch enabled.
+     *    - 2 wait-state cho HCLK 72 MHz.
+     *
+     * FLASH_ACR_LATENCY_1 có giá trị 0x2:
+     * đây là bit mask tạo giá trị LATENCY = 2.
      */
-    FLASH->ACR = (FLASH->ACR & ~0x7u) | (2u << 0) | (1u << 4);
+    FLASH->ACR =
+        (FLASH->ACR & ~FLASH_ACR_LATENCY) |
+        FLASH_ACR_LATENCY_1 |
+        FLASH_ACR_PRFTBE;
 
     /*
-     * AHB = SYSCLK / 1
-     * APB1 = HCLK / 2 = 36 MHz
-     * APB2 = HCLK / 1 = 72 MHz
-     * ADC = PCLK2 / 6 = 12 MHz
-     * PLL = HSE × 9 = 72 MHz
+     * 3. Cấu hình clock tree.
+     * Hàm này được gọi từ Reset_Handler sau reset phần cứng,
+     * khi PLL vẫn đang tắt.
+     *
+     * HSE          = 8 MHz
+     * PLL          = HSE x 9 = 72 MHz
+     * AHB / HCLK   = SYSCLK / 1 = 72 MHz
+     * APB1 / PCLK1 = HCLK / 2 = 36 MHz
+     * APB2 / PCLK2 = HCLK / 1 = 72 MHz
+     * ADC clock    = PCLK2 / 6 = 12 MHz
      */
-    RCC->CFGR &= ~((0xFu << 4)  |
-                   (0x7u << 8)  |
-                   (0x7u << 11) |
-                   (0x3u << 14) |
-                   (1u << 16)   |
-                   (1u << 17)   |
-                   (0xFu << 18));
+    RCC->CFGR &=
+        ~(RCC_CFGR_HPRE |
+          RCC_CFGR_PPRE1 |
+          RCC_CFGR_PPRE2 |
+          RCC_CFGR_ADCPRE |
+          RCC_CFGR_PLLSRC |
+          RCC_CFGR_PLLXTPRE |
+          RCC_CFGR_PLLMULL);
 
-    RCC->CFGR |= (0x4u << 8)  |  /* APB1 chia 2 */
-                 (0x2u << 14) |  /* ADC chia 6 */
-                 (1u << 16)   |  /* PLL lấy nguồn từ HSE */
-                 (0x7u << 18);   /* PLL nhân 9 */
+    RCC->CFGR |=
+        RCC_CFGR_PPRE1_DIV2 |
+        RCC_CFGR_ADCPRE_DIV6 |
+        RCC_CFGR_PLLSRC |
+        RCC_CFGR_PLLMULL9;
 
-    /* Bật PLL và chờ PLL sẵn sàng. */
-    RCC->CR |= (1u << 24);
+    /* 4. Bật PLL và chờ PLL ổn định. */
+    RCC->CR |= RCC_CR_PLLON;
+
     timeout = 1000000u;
-    while ((RCC->CR & (1u << 25)) == 0u) {
+
+    while ((RCC->CR & RCC_CR_PLLRDY) == 0u) {
         if (timeout-- == 0u) {
             for (;;) {
-                /* Dừng nếu PLL không khởi động. */
+                /* PLL không khóa được. */
             }
         }
     }
 
-    /* Chuyển SYSCLK sang PLL và chờ xác nhận. */
-    RCC->CFGR = (RCC->CFGR & ~0x3u) | 0x2u;
+    /* 5. Chọn PLL làm nguồn SYSCLK. */
+    RCC->CFGR =
+        (RCC->CFGR & ~RCC_CFGR_SW) |
+        RCC_CFGR_SW_PLL;
+
     timeout = 1000000u;
-    while ((RCC->CFGR & (0x3u << 2)) != (0x2u << 2)) {
+
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {
         if (timeout-- == 0u) {
             for (;;) {
-                /* Dừng nếu chưa chuyển được SYSCLK sang PLL. */
+                /* Không chuyển được SYSCLK sang PLL. */
             }
         }
     }
 
+    /* Hoàn tất các thay đổi cấu hình trước khi chạy tiếp. */
+    __DSB();
+    __ISB();
+
+    /* Chỉ cập nhật sau khi xác nhận chuyển clock thành công. */
     SystemCoreClock = 72000000u;
 }

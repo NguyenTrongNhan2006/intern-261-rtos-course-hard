@@ -32,6 +32,7 @@ WEAK_DEFAULT_HANDLER(SysTick_Handler);
 typedef void (*isr_handler_t)(void);
 
 extern uint32_t _estack;
+
 void Reset_Handler(void);
 
 __attribute__((section(".isr_vector"), used))
@@ -91,14 +92,16 @@ const isr_handler_t vector_table[] = {
 
 void Reset_Handler(void)
 {
-    uint32_t *source = &_sidata;
-    uint32_t *destination = &_sdata;
+    const volatile uint32_t *source = &_sidata;
+    volatile uint32_t *destination = &_sdata;
 
     while (destination < &_edata) {
         *destination++ = *source++;
     }
 
-    for (destination = &_sbss; destination < &_ebss; destination++) {
+    for (destination = &_sbss;
+         destination < &_ebss;
+         destination++) {
         *destination = 0u;
     }
 
