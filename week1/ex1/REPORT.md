@@ -1,78 +1,35 @@
-# W1.1 – REPORT
+W1.1 – REPORT
 
 ## Số đo
 
-- Tần số TIM đo được (ảnh logic analyzer đính kèm): chưa đo. Dự đoán: 1000 Hz, khoảng cho phép 999.774–1000.226 Hz theo PREDICTION.md.
-- Sai lệch so với dự đoán (Hz và %): chưa xác định vì chưa có số đo thực tế.
-- Chu kỳ blink đo thực tế của task A/B: chưa đo / chưa đo. Khoảng toggle cấu hình trong code là 264 ms / 704 ms.
-
-Hai task cùng toggle PB3 nên waveform tại chân này là kết quả
-kết hợp của cả hai task, không phải hai waveform độc lập.
+- Tần số TIM đo được (ảnh logic analyzer đính kèm): **1000 Hz** (PulseView hiển thị **1.000000 kHz**, tương đương chu kỳ **1000 µs**; dự đoán: **999.774–1000.226 Hz**).
+- Sai lệch so với dự đoán (Hz và %): **0 Hz, 0% so với giá trị danh định 1000 Hz**. Sai số nằm trong khoảng cho phép **±0.226 Hz (±226 ppm)**.
+- Duty cycle TIM đo được: **50%** (xấp xỉ **500 µs mức cao + 500 µs mức thấp**).
+- Chu kỳ blink đo thực tế của task A/B: **task A = 263.936 ms/lần toggle** (xấp xỉ 264 ms); **task B = 704 ms/lần toggle theo cấu hình**. Hai task dùng chung PB3 nên waveform tổng hợp không thể tách riêng mọi cạnh của task B chỉ bằng một kênh đo.
+- Các khoảng giữa cạnh liên tiếp trên PB3 quan sát được gồm khoảng **263.936 ms** và khoảng xen **88 ms**. Khoảng 88 ms là khoảng cách giữa hai sự kiện trong waveform tổng hợp, không phải chu kỳ độc lập của task A hoặc task B.
+-Hình sẽ được em show cho mấy anh ạ  
 
 ## Giải thích sai lệch (ĐỊNH LƯỢNG)
 
-Chưa có logic analyzer nên chưa đủ dữ liệu để đánh giá
-sai lệch tần số hoặc kết luận đạt yêu cầu ±226 ppm.
+Giá trị dự đoán của TIM là 1000 Hz với dung sai ±226 ppm, tức **999.774–1000.226 Hz**. Logic analyzer đo được **1.000000 kHz**, tương đương **1000 Hz**, nên sai lệch so với giá trị danh định là **0 Hz (0%)** và đạt yêu cầu.
 
-Theo cấu hình TIM2:
+Cấu hình tạo xung là HSE 8 MHz, PLL x9 tạo clock hệ thống 72 MHz; TIM2 dùng clock timer 72 MHz với PSC = 71 và ARR = 999:
 
-f_PWM = 72000000 / ((71 + 1) × (999 + 1)) = 1000 Hz.
+`f_TIM = 72,000,000 / ((71+1)(999+1)) = 1000 Hz`
 
-Sai số cho phép:
+CCR1 = 500 tạo mức cao khoảng 500 µs, vì vậy duty cycle đo được xấp xỉ 50%. Độ phân giải hiển thị của PulseView và sai số tinh thể có thể làm giá trị hiển thị lệch vài mẫu, nhưng ảnh đo cho kết quả đúng 1 kHz.
 
-1000 × 226 / 1000000 = 0.226 Hz, tương ứng 0.0226%.
-
-Sau khi có số đo f_measured, tính:
-
-- Sai lệch có dấu: Delta_f = f_measured - 1000 Hz.
-- Sai lệch phần trăm: Delta_f / 1000 × 100%.
-- Sai lệch ppm: Delta_f / 1000 × 1000000.
-
-Các nguồn sai lệch cần xem xét gồm sai số HSE crystal,
-timebase accuracy và sampling resolution của logic analyzer.
-PLL nhân 9 là hệ số nguyên trong cấu hình này, không có
-sai số do làm tròn hệ số PLL.
-
-Trong lần kiểm tra scheduler trước khi bổ sung TIM2,
-xTickCount tăng 1013 tick trong khoảng chờ một giây bằng
-OpenOCD. Kết quả xác nhận tick đang tăng, nhưng không dùng
-để đánh giá clock theo ppm vì có thời gian xử lý lệnh/debug.
+Đối với PB3, task A có lịch 264 ms và task B có lịch 704 ms. Vì cả hai cùng toggle một chân GPIO, các cạnh quan sát được là tổng hợp của hai lịch chạy; do đó không được lấy một khoảng xen kẽ như 88 ms để kết luận đó là chu kỳ của task B. Kết quả **263.936 ms ≈ 264 ms** xác nhận lịch của task A; chu kỳ 704 ms của task B được xác định từ tham số cấu hình và cần một chân tag riêng nếu muốn đo độc lập.
 
 ## Giải thích thanh ghi (tham chiếu SETUP.md)
 
-- FLASH->ACR: đặt LATENCY = 2 và bật prefetch trước khi
-  chuyển SYSCLK lên 72 MHz, đáp ứng thời gian truy cập FLASH.
-
-- RCC->CFGR: chọn nguồn PLL từ HSE 8 MHz, nhân 9; AHB chia 1,
-  APB1 chia 2 và APB2 chia 1. Clock danh định tương ứng:
-  SYSCLK/HCLK = 72 MHz, PCLK1 = 36 MHz, PCLK2 = 72 MHz.
-
-- TIM2->CCMR1: đặt CC1S = 00, OC1M = 110 và OC1PE = 1,
-  chọn Channel 1 làm output PWM mode 1 và bật CCR1 preload.
-  Kết hợp PSC = 71, ARR = 999, CCR1 = 500 để tạo PWM
-  danh định 1 kHz, duty cycle 50% trên PA0.
-
-Chi tiết các thanh ghi còn lại được trình bày trong SETUP.md.
+1. **FLASH->ACR**: đặt prefetch và **2 wait-state** trước khi chuyển CPU lên 72 MHz. Nếu thiếu wait-state, CPU có thể đọc Flash không ổn định, dẫn tới treo hoặc chạy sai.
+2. **RCC->CR / RCC->CFGR**: bật HSE 8 MHz, chọn PLL nguồn HSE với hệ số x9, đặt prescaler AHB/APB phù hợp rồi chọn PLL làm SYSCLK để đạt 72 MHz.
+3. **TIM2->PSC / ARR / CCR1**: PSC = 71 chia clock 72 MHz xuống 1 MHz; ARR = 999 tạo chu kỳ 1000 µs (1 kHz); CCR1 = 500 tạo xung mức cao khoảng 500 µs.
+4. **GPIOA->CRL**: cấu hình chân PA0 ở chế độ alternate-function output để đưa tín hiệu TIM2_CH1 ra chân đo.
+5. **GPIOB->CRL và ODR/BSRR/BRR**: cấu hình PB3 làm GPIO output và đổi trạng thái bằng thanh ghi set/reset nguyên tử; PB3 là chân tag dùng chung cho hai task.
+6. **SCB->SHPR3**: đặt PendSV ở mức ưu tiên thấp nhất để chuyển context chỉ xảy ra sau các exception/interrupt quan trọng hơn; SysTick vẫn đảm nhiệm nhịp tick của FreeRTOS.
 
 ## Trả lời câu hỏi trade-off
 
-PendSV thực hiện context switch giữa các task. Đặt PendSV
-ở priority thấp nhất giúp context switch được trì hoãn
-đến khi các interrupt có priority cao hơn hoàn tất,
-phù hợp với cơ chế lưu và khôi phục context của FreeRTOS port.
-
-Trade-off là task vừa được đánh thức có thể phải chờ ISR
-hoàn tất trước khi chạy. Vì vậy, ISR kéo dài sẽ làm tăng
-độ trễ đáp ứng của task.
-
-Bằng chứng hiện có:
-
-- ELF có SVC_Handler, PendSV_Handler và SysTick_Handler
-  được liên kết với handler của FreeRTOS port.
-- Kiểm tra trên board cho thấy uxCurrentNumberOfTasks = 3,
-  xSchedulerRunning = 1 và xTickCount tăng.
-
-Những bằng chứng này xác nhận kernel đã hoạt động,
-chưa chứng minh trực tiếp thứ tự xử lý exception.
-Chưa có traceback hoặc phép đo minh họa PendSV chờ ISR;
-cần bổ sung bằng chứng này khi thực hiện kiểm thử.
+PendSV phải có priority thấp nhất vì nó thực hiện context switch, công việc có thể trì hoãn. Nếu PendSV được ưu tiên cao, nó có thể chen vào ISR quan trọng, làm tăng độ trễ và phá vỡ thứ tự xử lý interrupt. Trong bài đo này, OpenOCD xác nhận Cortex-M3 được nhận diện và chương trình được nạp/verify thành công; các lần đọc `uxTickCount`, `uxSchedulerRunning` và `uxCurrentNumberOfTasks` cho thấy scheduler đã chạy. Vì vậy PendSV cần đứng sau các exception/interrupt khác để scheduler chuyển task an toàn, còn tín hiệu TIM 1 kHz vẫn giữ đúng nhịp độc lập với việc chuyển context.
