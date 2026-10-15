@@ -60,3 +60,37 @@ Em cam kết có thể giải thích được các phần quan trọng của ch�
 - PREDICTION giữ nguyên commit trước khi chạy. AI_LOG ghi phạm vi hỗ
   trợ thực tế; khả năng tự giải thích code cần được người học luyện
   và kiểm chứng trong phần vấn đáp, không suy ra từ việc test PASS
+
+## W1.3: RTA và kiểm chứng O0/O2
+
+Ngày: 16/10/2026. Bài: W1E3. Công cụ: Codex.
+
+Yêu cầu: đọc yêu cầu RTA trong repo, giải thích lý thuyết, đưa lệnh sinh
+tham số, soạn prediction và code cùng hướng dẫn build/đo từng bước.
+
+AI hỗ trợ sinh bộ tham số bằng tools/gen_params.py cho MSSV 2452882,
+kiểm tra utilization/RTA, soạn PREDICTION.md, main.c, rta_app.c,
+rta_measure.c, các header/config, cmake/w1e3.cmake, script capture/analysis
+và mẫu REPORT.md trong thư mục deliverables bên ngoài repo nộp bài.
+
+Kiểm tra trong phiên chuẩn bị: build/link O0 và O2 bằng Arm GNU GCC 14.2.1
+với Werror; API checker PASS trên 8 source/config mới; kiểm tra integer RTA,
+ideal RM simulation 5H và parser JOB bằng log synthetic có nhãn rõ ràng.
+
+Phần sinh viên tự đọc và kiểm tra: [CẦN BỔ SUNG].
+
+Sau bước chuẩn bị, người học trực tiếp chạy lệnh build/flash, nối phần cứng,
+reset STM32 và thu UART O0/O2 cùng các session PulseView O0/O2. Codex đọc
+các artifact và phân tích: đủ 205 job mỗi cấu hình, zero observed deadline
+miss; mỗi session LA cuối cùng khớp 254 event UART. Max mismatch căn cạnh
+đầu O0 = 7.819444 us, O2 = 8.972222 us ở sample rate 1 MHz. Lần LA O2 đầu
+thiếu một cạnh Idle được giữ lại riêng; không sửa/drop event để ép match.
+
+Prediction đã được AI soạn trong deliverables trước các bước đo, nhưng
+file trong repo vẫn là template khi kiểm tra sau phép đo. Không có bằng
+chứng commit prediction W1E3 trước khi chạy; cần ghi trung thực trình tự.
+
+Selected-time accounting còn chứa một phần ISR/exception, cần hiệu chỉnh C
+và định lượng phần overhead chưa bao phủ bởi OUT->IN. Số đo W1E2 baseline
+không thay thế số đo mới. WCRT quan sát hữu hạn không phải proof worst case
+tuyệt đối; đối chiếu LA/UART ở các lượt reset riêng không hiệu chuẩn clock.
