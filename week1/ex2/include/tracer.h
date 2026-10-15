@@ -5,16 +5,11 @@
 #ifndef W1E2_TRACER_H
 #define W1E2_TRACER_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/* Event values stored in tracer_record_t.event. */
-#define TRACER_EVENT_IN  0u
-#define TRACER_EVENT_OUT 1u
 
 typedef struct {
   uint32_t timestamp_cycles; /* DWT->CYCCNT at the moment of the event */
@@ -34,19 +29,6 @@ void tracer_on_switched_out(void);
  * (document the format for tools/trace_gantt.py in REPORT.md). Returns the
  * number of records dumped. */
 uint32_t tracer_dump_uart(void);
-
-/* Additional application helpers; the original interface above is preserved.
- * Append an event from a single producer and update its GPIO marker.
- * Returns false if recording is stopped, input is invalid or the buffer
- * is full. */
-bool tracer_record(
-    uint32_t timestamp_cycles,
-    uint8_t task_tag,
-    uint8_t event
-);
-
-/* Freeze recording and clear the trace GPIOs before dumping the buffer. */
-void tracer_stop(void);
 
 #ifdef __cplusplus
 }

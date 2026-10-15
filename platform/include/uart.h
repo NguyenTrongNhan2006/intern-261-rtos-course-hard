@@ -9,6 +9,7 @@ bool uart1_init(uint32_t baud);
 void uart1_write_char(char value);
 void uart1_write_string(const char *text);
 void uart1_write_u32(uint32_t value);
+void uart1_write_u64(uint64_t value);
 void uart1_flush(void);
 
 #endif

@@ -84,6 +84,23 @@ void uart1_write_u32(uint32_t value)
     }
 }
 
+void uart1_write_u64(uint64_t value)
+{
+    char digits[20];
+    uint32_t count = 0u;
+
+    do {
+        digits[count] = (char)('0' + (value % 10u));
+        ++count;
+        value /= 10u;
+    } while (value != 0u);
+
+    while (count != 0u) {
+        --count;
+        uart1_write_char(digits[count]);
+    }
+}
+
 void uart1_flush(void)
 {
     while ((USART1->SR & USART_SR_TC) == 0u) {

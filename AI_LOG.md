@@ -39,3 +39,24 @@ Em không sử dụng CubeMX/CubeIDE wizard, scaffold có sẵn hoặc project m
 Em cam kết có thể giải thích được các phần quan trọng của chương trình, bao gồm chuỗi startup, linker, cấu hình clock 72 MHz, Flash wait-state, GPIO, TIM tạo xung 1 kHz, SysTick, SVC, PendSV, FreeRTOS scheduler và nguyên nhân của các kết quả đo. Khi được mentor hỏi, em chịu trách nhiệm trình bày được vì sao mã nguồn hoạt động, vì sao số liệu đo phù hợp hoặc sai lệch so với dự đoán, cũng như các giới hạn của phép đo.
 
 **Nguyễn Trọng Nhân – 2452882**
+
+
+## W1.2 – Tracer và review ngày 15/10/2026
+
+- AI hỗ trợ soạn UART driver, FreeRTOSConfig, tracer/ring buffer,
+  hướng dẫn build/flash và phân tích CSV, sigrok session, disassembly
+- Người học trực tiếp nối STM32/ST-Link/USB-to-TTL/Logic Analyzer,
+  chạy các lệnh, nhấn RESET, thu UART/PulseView và cung cấp dữ liệu
+- Claude cung cấp review; Codex đối chiếu lại source và artifact,
+  sửa tag/GPIO handling, unwrap lúc dump, interface, preset và REPORT,
+  bổ sung script tái lập cùng host regression tests, theo yêu cầu
+  “tự sửa tự commit” của người học
+- Không chép kết luận review thành số đo mới: báo cáo phân biệt căn
+  cạnh đầu với mean fit, phân biệt dữ liệu nhóm với phép đo overhead
+  độc lập, không dùng W1.2 để kết luận HSE/LA đã được hiệu chuẩn
+- Số đo phần cứng và disassembly hiện lưu thuộc baseline `d673d5f`.
+  Firmware sau review đã build/host-check, chưa flash hoặc đo lại;
+  không cam kết timing cũ áp dụng cho firmware mới
+- PREDICTION giữ nguyên commit trước khi chạy. AI_LOG ghi phạm vi hỗ
+  trợ thực tế; khả năng tự giải thích code cần được người học luyện
+  và kiểm chứng trong phần vấn đáp, không suy ra từ việc test PASS

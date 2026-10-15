@@ -41,6 +41,10 @@ Khoảng 263.936 ms lệch so với 264 ms:
 
 Đây là sai lệch một khoảng cạnh, chưa đủ kết luận lỗi HSE
 hoặc analyzer vì còn ảnh hưởng việc chọn cạnh và độ trễ lập lịch.
+Đây không phải phép đo riêng độ lệch tần số HSE. Dữ liệu W1.2 trên
+cửa sổ khoảng 84 ms, sample 1 µs và có timestamp-to-GPIO latency
+cũng chưa đủ hiệu chuẩn clock hoặc kết luận chắc chắn nguyên nhân
+của khoảng cạnh W1.1 này; cần đo period nhiều chu kỳ bằng cùng setup.
 
 Hai task dùng chung PB3 nên waveform là tổng hợp. Khoảng 88 ms
 không phải chu kỳ task B. Hai lịch trùng nhau mỗi 2112 ms;

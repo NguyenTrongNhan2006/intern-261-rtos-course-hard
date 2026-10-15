@@ -15,12 +15,44 @@
                 "CMAKE_BUILD_TYPE": "Debug",
                 "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/arm-none-eabi.cmake"
             }
+        },
+        {
+            "name": "w1e2-o0",
+            "inherits": "debug",
+            "displayName": "W1E2 -O0 (current firmware)",
+            "binaryDir": "${sourceDir}/build/w1e2-current-O0",
+            "cacheVariables": {
+                "CMAKE_C_FLAGS_DEBUG": "-O0 -g3"
+            }
+        },
+        {
+            "name": "w1e2-o2",
+            "inherits": "debug",
+            "displayName": "W1E2 -O2 (current firmware)",
+            "binaryDir": "${sourceDir}/build/w1e2-current-O2",
+            "cacheVariables": {
+                "CMAKE_C_FLAGS_DEBUG": "-O2 -g3"
+            }
         }
     ],
     "buildPresets": [
         {
             "name": "debug",
             "configurePreset": "debug"
+        },
+        {
+            "name": "w1e2-o0",
+            "configurePreset": "w1e2-o0",
+            "targets": [
+                "w1e2"
+            ]
+        },
+        {
+            "name": "w1e2-o2",
+            "configurePreset": "w1e2-o2",
+            "targets": [
+                "w1e2"
+            ]
         }
     ]
 }

@@ -5,9 +5,25 @@
 #include "tracer.h"
 #include "uart.h"
 
+#include <stdbool.h>
+
 #define TRACER_BUFFER_CAPACITY 256u
-#define TRACER_FIRST_PIN       4u
-#define TRACER_LAST_PIN        6u
+#ifndef TRACER_FIRST_PIN
+#define TRACER_FIRST_PIN 4u
+#endif
+#ifndef TRACER_LAST_PIN
+#define TRACER_LAST_PIN 6u
+#endif
+
+_Static_assert(TRACER_FIRST_PIN <= TRACER_LAST_PIN, "invalid GPIO range");
+_Static_assert(TRACER_LAST_PIN < 16u, "GPIO pin must be below 16");
+
+#define TRACER_MAX_GPIO_TAG (TRACER_LAST_PIN - TRACER_FIRST_PIN)
+#define TRACER_PIN_MASK \
+    (((1u << (TRACER_MAX_GPIO_TAG + 1u)) - 1u) << TRACER_FIRST_PIN)
+#define TRACER_EVENT_IN  0u
+#define TRACER_EVENT_OUT 1u
+#define TRACER_INVALID_TAG UINT8_MAX
 
 typedef struct {
     tracer_record_t records[TRACER_BUFFER_CAPACITY];
@@ -62,7 +78,7 @@ void tracer_init(void)
     tracer_state.recording = 1u;
 }
 
-void tracer_stop(void)
+static void tracer_stop(void)
 {
     const uint32_t saved_primask = __get_PRIMASK();
 
@@ -71,15 +87,12 @@ void tracer_stop(void)
     tracer_state.recording = 0u;
     __DMB();
 
-    GPIOA->BRR =
-        (1u << 4u) |
-        (1u << 5u) |
-        (1u << 6u);
+    GPIOA->BRR = TRACER_PIN_MASK;
 
     __set_PRIMASK(saved_primask);
 }
 
-bool tracer_record(
+static bool tracer_record(
     uint32_t timestamp_cycles,
     uint8_t task_tag,
     uint8_t event
@@ -89,7 +102,7 @@ bool tracer_record(
         return false;
     }
 
-    if ((task_tag > 2u) || (event > TRACER_EVENT_OUT)) {
+    if (event > TRACER_EVENT_OUT) {
         return false;
     }
 
@@ -102,13 +115,15 @@ bool tracer_record(
         return false;
     }
 
-    const uint8_t pin =
-        (uint8_t)(TRACER_FIRST_PIN + task_tag);
+    /* Tags without a physical channel remain visible in the UART log. */
+    if (task_tag <= TRACER_MAX_GPIO_TAG) {
+        const uint32_t mask = 1u << (TRACER_FIRST_PIN + task_tag);
 
-    if (event == TRACER_EVENT_IN) {
-        gpio_set(GPIOA, pin);
-    } else {
-        gpio_clear(GPIOA, pin);
+        if (event == TRACER_EVENT_IN) {
+            GPIOA->BSRR = mask;
+        } else {
+            GPIOA->BRR = mask;
+        }
     }
 
     tracer_state.records[head].timestamp_cycles = timestamp_cycles;
@@ -147,13 +162,22 @@ uint32_t tracer_dump_uart(void)
     uart1_write_u32(tracer_state.overflow_count);
     uart1_write_string("\r\n");
 
+    /* Extend only after freezing, keeping 64-bit work out of the hooks.
+     * Adjacent records must be less than one CYCCNT period apart. */
+    uint64_t epoch = 0u;
+    uint32_t previous_cycles =
+        tracer_state.records[tracer_state.tail].timestamp_cycles;
     uint32_t dumped = 0u;
 
     while (tracer_state.tail != tracer_state.head) {
         const uint32_t tail = tracer_state.tail;
         const tracer_record_t record = tracer_state.records[tail];
 
-        uart1_write_u32(record.timestamp_cycles);
+        if (record.timestamp_cycles < previous_cycles) {
+            epoch += UINT64_C(1) << 32u;
+        }
+        previous_cycles = record.timestamp_cycles;
+        uart1_write_u64(epoch + record.timestamp_cycles);
         uart1_write_char(',');
 
         uart1_write_u32(record.task_tag);
@@ -184,14 +208,17 @@ static uint8_t tracer_current_tag(void)
         tag_function = xTaskGetApplicationTaskTagFromISR(NULL);
     }
 
-    /* Only Idle has no application tag in this three-task setup. */
+    /* The application reserves a NULL tag function for Idle (tag 0). */
     if (tag_function == NULL) {
         return 0u;
     }
 
     const BaseType_t tag = tag_function(NULL);
 
-    configASSERT((tag >= 1) && (tag <= 2));
+    /* Never stop PendSV for an application-provided tag value. */
+    if ((tag <= 0) || ((uint32_t)tag >= TRACER_INVALID_TAG)) {
+        return TRACER_INVALID_TAG;
+    }
 
     return (uint8_t)tag;
 }
