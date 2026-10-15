@@ -24,6 +24,7 @@ add_link_options(
     -Wl,--gc-sections
 )
 
+# W1E1: application, platform and FreeRTOS sources.
 add_executable(w1e1
     platform/startup.c
     platform/system.c
@@ -89,3 +90,65 @@ else()
     )
 endif()
 
+
+# W1E2: application, platform and FreeRTOS sources.
+add_executable(w1e2
+    platform/startup.c
+    platform/system.c
+    platform/gpio.c
+    platform/uart.c
+
+    week1/ex2/main.c
+    week1/ex2/trace_app.c
+    week1/ex2/tracer.c
+
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+    third_party/FreeRTOS-Kernel/portable/MemMang/heap_4.c
+)
+
+set_target_properties(w1e2 PROPERTIES
+    SUFFIX ".elf"
+)
+
+# Khai báo header directories và chip
+target_include_directories(w1e2 PRIVATE
+    platform/include
+    week1/ex2/include
+
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+
+target_compile_definitions(w1e2 PRIVATE
+    STM32F103xB
+)
+
+# Khai báo linker options
+target_link_options(w1e2 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+)
+
+# Khai báo OpenOCD flash target
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w1e2_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w1e2>} verify reset exit"
+        COMMENT "Flashing w1e2 with ST-Link"
+        VERBATIM
+        USES_TERMINAL
+    )
+
+    add_dependencies(w1e2_flash w1e2)
+endif()
