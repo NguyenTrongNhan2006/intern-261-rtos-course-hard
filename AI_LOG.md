@@ -100,3 +100,5 @@ tuyệt đối; đối chiếu LA/UART ở các lượt reset riêng không hi�
 Theo yêu cầu thực hiện của người học, Codex chuẩn bị và tích hợp fixed iteration workload, calibration DWT, wrapper ARM_CM3 riêng W1E3, JOB2 parser và prediction trước phép đo mới. Không sửa kernel. Đã giữ checkpoint nguồn và SHA256/ELF/map/CSV/session của V1; không đụng các deletion đang stage trong tests/w1e2. Các số V1 không áp cho firmware V2.
 
 Codex đã trực tiếp mở COM19, nạp/verify/reset qua OpenOCD, thu và phân tích V2 O0/O2. Hai bản đều Verified OK, đủ 205 JOB2, calibration đạt giới hạn đã dự đoán, zero observed miss. Lần nạp thử đầu không DONE do direct handler assertion; đã sửa indirect routing theo port và thêm assert vector riêng. Có counter SysTick/PendSV riêng, residual được báo trung thực; chưa có LA V2. Host/parser/vector checks PASS, không thay số đo V1 bằng V2 và không push remote.
+
+Người học đã thu thêm LA V2 O0/O2; Codex đối chiếu đủ 254 event mỗi bản. Max mismatch căn cạnh đầu O0 = 9.305556 us, O2 = 7.500000 us ở 1 MHz, 10 triệu samples. Giữ session V1/V2 riêng, không drop event hoặc fit clock scale.

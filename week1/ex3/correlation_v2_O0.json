@@ -1,0 +1,152 @@
+{
+  "samplerate_hz": 1000000.0,
+  "samples": 10000000,
+  "uart_captures": 1,
+  "uart_captures_identical": true,
+  "matches": [
+    {
+      "origin_us": 4657535.0,
+      "events": 254,
+      "first_edge": {
+        "mean_us": -5.3022747156637395,
+        "sd_us": 2.1632309479691245,
+        "min_us": -9.305555555503815,
+        "max_us": 0.0,
+        "max_abs_us": 9.305555555503815
+      },
+      "mean_all": {
+        "mean_us": -1.1889002468426874e-16,
+        "sd_us": 2.1632309479691245,
+        "min_us": -4.003280839840076,
+        "max_us": 5.3022747156637395,
+        "max_abs_us": 5.3022747156637395
+      },
+      "mean_pendsv": {
+        "mean_us": 3.2297397080004555e-16,
+        "sd_us": 2.1416120649977,
+        "min_us": -3.982323232268282,
+        "max_us": 3.9204545454577477,
+        "max_abs_us": 3.982323232268282
+      },
+      "pendsv_offset_relative_first_us": -5.323232323235533,
+      "first_thread_residual_after_pendsv_fit_us": 5.323232323235533,
+      "worst_first_event": 242
+    }
+  ],
+  "switches": {
+    "n": 126,
+    "min": 444,
+    "max": 607,
+    "mean": 512.3888888888889,
+    "jitter": 163,
+    "directions": [
+      {
+        "from": 0,
+        "to": 1,
+        "n": 19,
+        "min": 444,
+        "max": 444
+      },
+      {
+        "from": 0,
+        "to": 2,
+        "n": 10,
+        "min": 444,
+        "max": 444
+      },
+      {
+        "from": 1,
+        "to": 0,
+        "n": 13,
+        "min": 607,
+        "max": 607
+      },
+      {
+        "from": 1,
+        "to": 2,
+        "n": 8,
+        "min": 511,
+        "max": 511
+      },
+      {
+        "from": 1,
+        "to": 3,
+        "n": 7,
+        "min": 547,
+        "max": 547
+      },
+      {
+        "from": 1,
+        "to": 4,
+        "n": 8,
+        "min": 577,
+        "max": 577
+      },
+      {
+        "from": 2,
+        "to": 0,
+        "n": 5,
+        "min": 577,
+        "max": 577
+      },
+      {
+        "from": 2,
+        "to": 3,
+        "n": 12,
+        "min": 511,
+        "max": 511
+      },
+      {
+        "from": 2,
+        "to": 4,
+        "n": 5,
+        "min": 547,
+        "max": 547
+      },
+      {
+        "from": 3,
+        "to": 0,
+        "n": 5,
+        "min": 547,
+        "max": 547
+      },
+      {
+        "from": 3,
+        "to": 1,
+        "n": 7,
+        "min": 481,
+        "max": 481
+      },
+      {
+        "from": 3,
+        "to": 4,
+        "n": 7,
+        "min": 511,
+        "max": 511
+      },
+      {
+        "from": 4,
+        "to": 0,
+        "n": 6,
+        "min": 511,
+        "max": 517
+      },
+      {
+        "from": 4,
+        "to": 1,
+        "n": 10,
+        "min": 481,
+        "max": 481
+      },
+      {
+        "from": 4,
+        "to": 2,
+        "n": 4,
+        "min": 481,
+        "max": 481
+      }
+    ]
+  },
+  "tolerance_us": 16,
+  "pass": true
+}

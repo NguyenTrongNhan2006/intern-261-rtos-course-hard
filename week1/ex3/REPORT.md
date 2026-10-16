@@ -345,8 +345,30 @@ effect; chưa chứng minh WCRT tuyệt đối hoặc oscillator/timebase calibr
 Xem V2_GUIDE.md và tests/w1e3/README.md. Analyzer V2 dùng JOB2; parser JOB
 của V1 không áp cho format mới. Kết quả JSON giữ cycle gốc để tái tính.
 Gantt V2 chỉ bao phủ cửa sổ scheduler ring 254 event; JOB2 đủ 205 job.
-Capture LA ở mục 7 thuộc V1. Chưa thu session LA cho V2; không đổi tên dữ
-liệu V1 thành bằng chứng firmware V2. Đây là giới hạn còn được ghi rõ.
+Capture LA ở mục 7 thuộc V1. Hai session LA V2 đã được người học thu
+riêng sau khi nạp từng bản tương ứng; đối chiếu được ghi ở mục 9.6.
 
 SHA256 ELF/source/log tại thời điểm hoàn tất được lưu trong V2_MANIFEST.json.
 Không push lên remote trong bước này.
+
+### 9.6. Logic Analyzer đối chiếu firmware V2
+
+Người học trực tiếp nạp và thu capture_v2_O0.sr, capture_v2_O2.sr.
+Codex đọc session bằng trace_correlate.py, mapping channels 0,1,2,3,4
+tương ứng Idle/tau0/tau1/tau2/tau3 trên PA4..PA8.
+
+| Bản | Event khớp | Sample rate | Samples | Max abs mismatch căn cạnh đầu (us) |
+| :--- | ---: | ---: | ---: | ---: |
+| V2 O0 | 254 | 1 MHz | 10000000 | 9.305556 |
+| V2 O2 | 254 | 1 MHz | 10000000 | 7.500000 |
+
+Cả hai khớp đủ 254 event liên tiếp theo thứ tự tag/IN/OUT; chỉ căn origin
+tại cạnh đầu, không fit clock scale hoặc drop event. Mỗi session dài 10 s.
+Sai lệch dưới ngưỡng tham chiếu 16 us của W1E2; đây không phải ngưỡng
+riêng được sinh cho W1E3. Bước lấy mẫu là 1 us; không suy ra độ chính xác
+vật lý tuyệt đối hay hiệu chuẩn oscillator từ các giá trị trên.
+
+UART và LA thu ở các lượt reset riêng, không tuyên bố cùng một lần chạy.
+Đối chiếu chỉ bao phủ cửa sổ scheduler ring 254 event; JOB2 vẫn là bằng
+chứng đủ 205 job/5H. Kết quả cấu trúc ở correlation_v2_O0.json và
+correlation_v2_O2.json; hai session mới được giữ riêng với session V1.

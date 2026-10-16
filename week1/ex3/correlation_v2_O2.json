@@ -1,0 +1,152 @@
+{
+  "samplerate_hz": 1000000.0,
+  "samples": 10000000,
+  "uart_captures": 1,
+  "uart_captures_identical": true,
+  "matches": [
+    {
+      "origin_us": 4474201.0,
+      "events": 254,
+      "first_edge": {
+        "mean_us": -3.4502405949262536,
+        "sd_us": 2.0550197193495663,
+        "min_us": -7.5,
+        "max_us": 0.19444444444444287,
+        "max_abs_us": 7.5
+      },
+      "mean_all": {
+        "mean_us": 1.90573716038019e-16,
+        "sd_us": 2.0550197193495663,
+        "min_us": -4.049759405073747,
+        "max_us": 3.6446850393706964,
+        "max_abs_us": 4.049759405073747
+      },
+      "mean_pendsv": {
+        "mean_us": 9.829642589566603e-17,
+        "sd_us": 2.0475742166950632,
+        "min_us": -4.036122090469295,
+        "max_us": 3.658322353975148,
+        "max_abs_us": 4.036122090469295
+      },
+      "pendsv_offset_relative_first_us": -3.463877909530705,
+      "first_thread_residual_after_pendsv_fit_us": 3.463877909530705,
+      "worst_first_event": 252
+    }
+  ],
+  "switches": {
+    "n": 126,
+    "min": 224,
+    "max": 280,
+    "mean": 249.28571428571428,
+    "jitter": 56,
+    "directions": [
+      {
+        "from": 0,
+        "to": 1,
+        "n": 19,
+        "min": 224,
+        "max": 224
+      },
+      {
+        "from": 0,
+        "to": 2,
+        "n": 10,
+        "min": 224,
+        "max": 224
+      },
+      {
+        "from": 1,
+        "to": 0,
+        "n": 13,
+        "min": 280,
+        "max": 280
+      },
+      {
+        "from": 1,
+        "to": 2,
+        "n": 8,
+        "min": 248,
+        "max": 248
+      },
+      {
+        "from": 1,
+        "to": 3,
+        "n": 7,
+        "min": 262,
+        "max": 262
+      },
+      {
+        "from": 1,
+        "to": 4,
+        "n": 8,
+        "min": 271,
+        "max": 271
+      },
+      {
+        "from": 2,
+        "to": 0,
+        "n": 5,
+        "min": 271,
+        "max": 271
+      },
+      {
+        "from": 2,
+        "to": 3,
+        "n": 12,
+        "min": 248,
+        "max": 248
+      },
+      {
+        "from": 2,
+        "to": 4,
+        "n": 5,
+        "min": 262,
+        "max": 262
+      },
+      {
+        "from": 3,
+        "to": 0,
+        "n": 5,
+        "min": 262,
+        "max": 262
+      },
+      {
+        "from": 3,
+        "to": 1,
+        "n": 7,
+        "min": 243,
+        "max": 243
+      },
+      {
+        "from": 3,
+        "to": 4,
+        "n": 7,
+        "min": 248,
+        "max": 248
+      },
+      {
+        "from": 4,
+        "to": 0,
+        "n": 6,
+        "min": 248,
+        "max": 250
+      },
+      {
+        "from": 4,
+        "to": 1,
+        "n": 10,
+        "min": 243,
+        "max": 243
+      },
+      {
+        "from": 4,
+        "to": 2,
+        "n": 4,
+        "min": 243,
+        "max": 243
+      }
+    ]
+  },
+  "tolerance_us": 16,
+  "pass": true
+}
