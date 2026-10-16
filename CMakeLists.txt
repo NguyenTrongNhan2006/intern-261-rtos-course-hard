@@ -198,3 +198,88 @@ if(OPENOCD_EXECUTABLE)
     )
 endif()
 
+# W1E4
+option(W1E4_HEAP_STAGE "Build the temporary heap experiment" OFF)
+
+function(add_w1e4_target target app)
+    add_executable(${target}
+        platform/startup.c
+        platform/system.c
+        platform/gpio.c
+        platform/uart.c
+        week1/ex4/main.c
+        third_party/FreeRTOS-Kernel/tasks.c
+        third_party/FreeRTOS-Kernel/list.c
+        third_party/FreeRTOS-Kernel/queue.c
+        third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+    )
+
+    if(W1E4_HEAP_STAGE)
+        target_sources(${target} PRIVATE
+            week1/ex4/heap_experiment.c
+            third_party/FreeRTOS-Kernel/portable/MemMang/heap_4.c
+        )
+    else()
+        target_sources(${target} PRIVATE
+            third_party/FreeRTOS-Kernel/timers.c
+        )
+
+        if(NOT app EQUAL 1)
+            target_sources(${target} PRIVATE
+                week1/ex2/tracer.c
+            )
+        endif()
+    endif()
+
+    target_include_directories(${target} PRIVATE
+        week1/ex4/include
+        week1/ex2/include
+        platform/include
+        third_party/CMSIS_5/CMSIS/Core/Include
+        third_party/cmsis-device-f1/Include
+        third_party/FreeRTOS-Kernel/include
+        third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+    )
+
+    target_compile_definitions(${target} PRIVATE
+        STM32F103xB
+        W1E4_APP=${app}
+        W1E4_HEAP_STAGE=$<BOOL:${W1E4_HEAP_STAGE}>
+        TRACER_FIRST_PIN=4u
+        TRACER_LAST_PIN=8u
+    )
+
+    set_target_properties(${target} PROPERTIES
+        SUFFIX ".elf"
+    )
+
+    target_link_options(${target} PRIVATE
+        "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+        -nostartfiles
+        "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${target}.map"
+        -Wl,--print-memory-usage
+        -Wl,-z,noexecstack
+    )
+
+    if(OPENOCD_EXECUTABLE)
+        add_custom_target(${target}_flash
+            COMMAND "${OPENOCD_EXECUTABLE}"
+                -f interface/stlink.cfg
+                -c "transport select swd"
+                -f target/stm32f1x.cfg
+                -c "adapter speed 100"
+                -c "reset_config none"
+                -c "program {$<TARGET_FILE:${target}>} verify reset exit"
+            DEPENDS ${target}
+            VERBATIM
+            USES_TERMINAL
+        )
+    endif()
+endfunction()
+
+add_w1e4_target(w1e4 3)
+
+if(NOT W1E4_HEAP_STAGE)
+    add_w1e4_target(w1e4_blinky 1)
+    add_w1e4_target(w1e4_trace 2)
+endif()

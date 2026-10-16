@@ -40,7 +40,6 @@ Em cam kết có thể giải thích được các phần quan trọng của ch�
 
 **Nguyễn Trọng Nhân – 2452882**
 
-
 ## W1.2 – Tracer và review ngày 15/10/2026
 
 - AI hỗ trợ soạn UART driver, FreeRTOSConfig, tracer/ring buffer,
@@ -103,7 +102,6 @@ Codex đã trực tiếp mở COM19, nạp/verify/reset qua OpenOCD, thu và ph�
 
 Người học đã thu thêm LA V2 O0/O2; Codex đối chiếu đủ 254 event mỗi bản. Max mismatch căn cạnh đầu O0 = 9.305556 us, O2 = 7.500000 us ở 1 MHz, 10 triệu samples. Giữ session V1/V2 riêng, không drop event hoặc fit clock scale.
 
-
 ## W1E2 – Đo lại và hoàn thiện ngày 16/10/2026
 
 Người học trực tiếp chạy preset w1e2-o0/o2, nạp board và thu lại UART,
@@ -125,3 +123,154 @@ Không sửa firmware trong bước hoàn thiện nên không làm thay đổi t
 vừa đo. Bộ tests/w1e2 đã được người học yêu cầu xóa, không còn link/lệnh
 chạy bộ test đó trong báo cáo cuối. Baseline vẫn có trong lịch sử Git.
 Không chỉnh sửa dữ liệu hoặc file tạm của W1E3.
+
+## W1E4 – Hiện thực, đo board và tinh chỉnh stack ngày 16/10/2026
+
+Prompt tiếp nối của người học
+
+> okie tiếp tục làm và hoàn thành các bước ; lưu ý code thì gửi ra màn mình mình tự dán vào
+
+> đã thu xong kiểm tra và tiếp tục
+
+> xong rroif nha
+
+### Phạm vi hỗ trợ của AI
+
+Codex cung cấp nội dung source và lệnh PowerShell trong chat
+Người học tự dán code, build, nối phần cứng, nạp firmware và thu UART
+
+Code được hướng dẫn gồm main.c, FreeRTOSConfig.h,
+source thí nghiệm heap tạm thời và cấu hình target CMake
+
+Giai đoạn heap dùng heap_4 theo ngoại lệ thí nghiệm trong README
+Sau khi lưu đủ log, source heap_experiment.c được bỏ khỏi bản cuối
+Các target static không liên kết heap_4
+
+Firmware static dùng xTaskCreateStatic, xQueueCreateStatic,
+xSemaphoreCreateMutexStatic cùng callback cấp bộ nhớ Idle và Timer
+
+Có ba target riêng cho Blinky, Trace và RTA
+Firmware W1E4 giữ workload cần kiểm tra bộ nhớ,
+không giữ buffer JOB2 của phương án prediction ban đầu
+
+Codex hướng dẫn sửa cấu hình PB3 để tắt JTAG và giữ SWD cho bản Blinky
+
+### Hỗ trợ xử lý môi trường
+
+Codex hướng dẫn bổ sung target W1E4 khi CMake chưa nhận target
+
+Codex giải thích lỗi logger thiếu đối số do biến PowerShell chưa có giá trị,
+hướng dẫn chọn COM19 và dùng here-string hoàn chỉnh
+
+Khi OpenOCD không đọc được CPU, Codex hướng dẫn người học thử boot ROM
+với BOOT0 = 1, BOOT1 = 0 rồi nạp lại
+Sau khi nạp phải đưa BOOT0 về 0 để chạy firmware từ Flash
+
+Người học thao tác trực tiếp trên board
+Codex không trực tiếp nạp board trong bước kiểm tra cuối
+
+### Kết quả được kiểm tra từ file thật
+
+Log week1/ex4/measurements/heap_log_20261016_192528.csv đủ 72 thao tác qua 6 vòng
+Đúng kích thước và thứ tự free của MSSV 2452882
+
+Heap thực chiếm cực đại 872 byte
+Minimum-ever thấp nhất 7312 byte
+Cuối mỗi vòng free và khối trống lớn nhất đều trở về 8184 byte
+
+Phân mảnh tạm thời xuất hiện khi khối 3 còn ngăn hai vùng trống
+Sau khi free khối 3, heap_4 coalescing thành một vùng trống
+
+Sau baseline, stack ứng dụng và Timer giảm từ 256 xuống 128 words
+Idle giữ 128 words
+
+Ba log hoàn chỉnh sau tinh chỉnh là
+
+week1/ex4/measurements/static_rta_tuned_20261016_200818.csv
+week1/ex4/measurements/static_blinky_tuned_20261016_200954.csv
+week1/ex4/measurements/static_trace_tuned_20261016_201024.csv
+
+Cả ba có đúng APP, self-test queue/mutex PASS,
+STACK_MARGIN_32_WORDS,1 và W1E4 STATIC DONE
+
+Biên stack thấp nhất là TraceB còn 76 words, tương đương 304 byte
+
+Log RTA và Trace mỗi file có 254 sự kiện tracer,
+timestamp không giảm, cặp IN/OUT hợp lệ và overflow=0
+
+RAM section sau tinh chỉnh
+
+w1e4 dùng 6472 byte
+w1e4_blinky dùng 3096 byte
+w1e4_trace dùng 5192 byte
+
+Bảng tính tay RTA là 6468 byte
+Sai số so với map là 4 byte, trong giới hạn 123 byte
+
+RTA tiết kiệm 2560 byte so với baseline
+Blinky và Trace mỗi bản tiết kiệm 1536 byte
+
+tools/check_api.sh PASS trên 55 file
+
+Checker được chạy với nội dung script hiện có,
+chuẩn hóa xuống dòng trong bộ nhớ và chọn Python đã cài
+Không sửa file checker hoặc quy tắc kiểm tra
+
+Đã kiểm tra symbol của cả ba ELF cuối,
+không thấy các symbol cấp phát động đã dò
+Đã kiểm tra riêng dòng link của từng target W1E4,
+không liên kết heap_4 hoặc heap_experiment
+
+git diff --check trả về mã 0
+
+### Dấu vân tay log đã kiểm tra
+
+week1/ex4/measurements/heap_log_20261016_192528.csv
+SHA256 132293b3c09e342aed90597603d4e1ed793b41ef8a99368e37f4a19bc5e151c3
+
+week1/ex4/measurements/static_rta_tuned_20261016_200818.csv
+SHA256 dec3b48176c36077b44bf183bcb64fb92c05deffab88e2da56a0d6eead4a01e7
+
+week1/ex4/measurements/static_blinky_tuned_20261016_200954.csv
+SHA256 77c1d8c52765adb3b11451cfb3fa308c3853592ce865d84b74ebb98a11fd9396
+
+week1/ex4/measurements/static_trace_tuned_20261016_201024.csv
+SHA256 82b2d388554c0e62530fc896c977d2d9c6a54df79307b74bccb9c05649512bc8
+
+### Giới hạn và trách nhiệm kiểm chứng
+
+Giữ nguyên log NUL và các log thiếu đầu,
+không dùng chúng thay cho log hoàn chỉnh
+
+High-water mark chỉ phản ánh những đường chạy đã thực thi
+Calibration không thay cho phép đo WCRT hoặc deadline
+
+Chưa có kiểm thử chạy kéo dài hoặc phép đo logic analyzer riêng của W1E4
+Không khẳng định mọi tình huống đều an toàn stack chỉ từ các lượt đo này
+
+PREDICTION.md giữ lịch sử thiết kế ban đầu và phần điều chỉnh
+Không có commit prediction trước phép đo theo yêu cầu không commit của người học
+
+Codex cung cấp REPORT.md và phần AI_LOG này trong chat để người học tự dán
+Không tự sửa hai file trong bước kiểm tra cuối
+Không commit hoặc push
+
+Phần người học tự giải thích lại về coalescing,
+high-water mark và cách đọc map [CẦN BỔ SUNG]
+
+## W1E4 – Gom log đo trước khi người học commit
+
+Prompt của người học
+
+> gôm file static và heap_log vào 1 thư mục cho gọn sau đó đưa lệnh mình commit
+
+Codex gom 9 log CSV static và heap_log vào week1/ex4/measurements
+Giữ nguyên tên và nội dung, gồm log hoàn chỉnh, baseline và log lỗi hoặc thiếu đầu
+Đối chiếu SHA256 trước và sau khi chuyển để kiểm tra dữ liệu không đổi
+
+Cập nhật đường dẫn trong REPORT.md và AI_LOG.md
+Chuẩn hóa tên header FreeRTOSconfig.h thành FreeRTOSConfig.h,
+không đổi nội dung header
+
+Không tạo bản sao log hoặc file manifest mới
+Không stage, commit hoặc push, chỉ cung cấp lệnh để người học tự chạy
