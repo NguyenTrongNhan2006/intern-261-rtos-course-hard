@@ -26,6 +26,6 @@ SVC/PendSV/SysTick vector addresses before the scheduler starts.
 Analyze the measured logs with:
 
 ```powershell
-& $w1e3Python tools/analyze_w1e3_v2.py week1/ex3/trace_v2_O0.csv --json-out week1/ex3/results_v2_O0.json
-& $w1e3Python tools/analyze_w1e3_v2.py week1/ex3/trace_v2_O2.csv --json-out week1/ex3/results_v2_O2.json
+& $w1e3Python tools/analyze_w1e3_v2.py week1/ex3/measurements/trace_v2_O0.csv --json-out week1/ex3/measurements/results_v2_O0.json
+& $w1e3Python tools/analyze_w1e3_v2.py week1/ex3/measurements/trace_v2_O2.csv --json-out week1/ex3/measurements/results_v2_O2.json
 ```

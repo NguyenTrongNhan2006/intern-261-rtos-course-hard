@@ -1,7 +1,7 @@
 # W1.3 REPORT: RM, RTA và đo trên STM32
 
 MSSV: 2452882. Báo cáo phân tích hai UART capture được người học cung cấp
-trong phiên này: `week1/ex3/trace_O0.csv` và `trace_O2.csv`.
+trong phiên này: `measurements/trace_O0.csv` và `measurements/trace_O2.csv`.
 Quy đổi DWT dùng HCLK danh định 72 MHz, tương ứng 72 cycles/us.
 
 ## 1. Prediction và lịch sử
@@ -14,7 +14,7 @@ thành commit prediction trước phép đo. Cần bổ sung nội dung vào rep
 đúng trình tự thời gian này trong báo cáo.
 
 Source V1 được checkpoint tại a624a01 sau các phép đo; ELF/map gốc đã
-được backup. SHA256 nằm trong BASELINE_V1_MANIFEST.json. Không gọi commit
+được backup. SHA256 nằm trong measurements/BASELINE_V1_MANIFEST.json. Không gọi commit
 sau phép đo là commit prediction trước phép đo.
 
 ## 2. Mô hình lý thuyết
@@ -167,7 +167,7 @@ các nguồn vật lý đó. Bảng trên cũng không xác nhận exclusive CPU
 Mapping của W1E3: PA4 = Idle, PA5 = tau0, PA6 = tau1, PA7 = tau2,
 PA8 = tau3. UART TX = PA9, 115200 baud, 8N1.
 
-Đã đọc capture_O0.sr bằng trace_correlate.py của repo, với mapping channels
+Đã đọc measurements/capture_O0.sr bằng trace_correlate.py của repo, với mapping channels
 0,1,2,3,4. Session chứa 10 triệu samples ở 1 MHz, tức 10 giây.
 Khớp đầy đủ 254 event GPIO với 254 event UART theo đúng thứ tự tag và
 IN/OUT. Mốc cạnh đầu trong LA tại 1127819 us tính từ đầu session.
@@ -187,7 +187,7 @@ kết quả xác nhận sự khớp trình tự/timing giữa hai capture, khôn
 chúng là cùng một lần chạy. Đối chiếu này cũng chưa hiệu chuẩn release
 epoch trong tick hook hoặc exclusive CPU cost.
 
-Đã kiểm tra lần capture_O2.sr đầu tiên: 10 triệu samples, 1 MHz. Checker
+Đã kiểm tra lần measurements/capture_O2.sr đầu tiên: 10 triệu samples, 1 MHz. Checker
 không tìm thấy chuỗi đầy đủ 254 event. Kiểm tra chẩn đoán tìm thấy 8 event
 UART đầu khớp thứ tự, thiếu event thứ 9 (tag 0 IN, tức cạnh lên Idle trên
 D0), rồi 245 event còn lại khớp liên tiếp. Căn cạnh đầu của riêng suffix
@@ -197,7 +197,7 @@ không phải kết quả PASS của đối chiếu đầy đủ; không bỏ/s�
 
 Lần O2 đầu được lưu trong commit a624a01 với tên capture_O2_first.sr.
 Sau khi thu lại và lưu
-capture_O2.sr mới, checker khớp đầy đủ 254 event theo thứ tự tag và IN/OUT,
+measurements/capture_O2.sr mới, checker khớp đầy đủ 254 event theo thứ tự tag và IN/OUT,
 với mapping D0..D4 tương ứng tag 0..4. Session mới có 10 triệu samples,
 sample rate 1 MHz, thời gian 10 giây.
 
@@ -238,7 +238,7 @@ không thay thế việc mô hình hóa overhead/jitter/blocking của hệ th�
 
 Các bảng mục 1 đến 8 là baseline V1, được giữ nguyên để so sánh. Source V1
 được checkpoint tại a624a01; ELF/map và dữ liệu gốc có SHA256 trong
-BASELINE_V1_MANIFEST.json. Prediction V2 commit 59a16a7 trước mọi lần
+measurements/BASELINE_V1_MANIFEST.json. Prediction V2 commit 59a16a7 trước mọi lần
 nạp V2. Prediction này đã biết kết quả V1, không phải dự đoán mù.
 
 V2 chạy đủ vòng SUBS/BNE cố định đã hiệu chỉnh DWT trước scheduler, khi
@@ -267,8 +267,8 @@ log chưa DONE và counter IRQ sai. ELF checks PASS vector/call structure
 cho hai bản. Host/ELF checks không giả lập toàn bộ exception semantics.
 
 Cả hai bản đã nạp bằng OpenOCD/ST-Link với Verified OK, tự reset và thu
-qua COM19, 115200 8N1. Log flash và UART có tên flash_v2_O0/O2.txt và
-trace_v2_O0/O2.csv. Mỗi capture đủ 205 job, chung timestamp cho release
+qua COM19, 115200 8N1. Log flash và UART có tên measurements/flash_v2_O0/O2.txt và
+measurements/trace_v2_O0/O2.csv. Mỗi capture đủ 205 job, chung timestamp cho release
 cùng tick, không có deadline miss trong tập đã quan sát. Flash thử đầu
 của O2 verify được nhưng không DONE vì direct handler assertion; log
 attempt1 được lưu trong lịch sử commit ec693c2, không được tính là
@@ -350,12 +350,12 @@ Gantt V2 chỉ bao phủ cửa sổ scheduler ring 254 event; JOB2 đủ 205 job
 Capture LA ở mục 7 thuộc V1. Hai session LA V2 đã được người học thu
 riêng sau khi nạp từng bản tương ứng; đối chiếu được ghi ở mục 9.6.
 
-SHA256 ELF/source/log tại thời điểm hoàn tất được lưu trong V2_MANIFEST.json.
+SHA256 ELF/source/log tại thời điểm hoàn tất được lưu trong measurements/V2_MANIFEST.json.
 Không push lên remote trong bước này.
 
 ### 9.6. Logic Analyzer đối chiếu firmware V2
 
-Người học trực tiếp nạp và thu capture_v2_O0.sr, capture_v2_O2.sr.
+Người học trực tiếp nạp và thu measurements/capture_v2_O0.sr, capture_v2_O2.sr.
 Codex đọc session bằng trace_correlate.py, mapping channels 0,1,2,3,4
 tương ứng Idle/tau0/tau1/tau2/tau3 trên PA4..PA8.
 
@@ -372,14 +372,29 @@ vật lý tuyệt đối hay hiệu chuẩn oscillator từ các giá trị trê
 
 UART và LA thu ở các lượt reset riêng, không tuyên bố cùng một lần chạy.
 Đối chiếu chỉ bao phủ cửa sổ scheduler ring 254 event; JOB2 vẫn là bằng
-chứng đủ 205 job/5H. Kết quả cấu trúc ở correlation_v2_O0.json và
-correlation_v2_O2.json; hai session mới được giữ riêng với session V1.
+chứng đủ 205 job/5H. Kết quả cấu trúc ở measurements/correlation_v2_O0.json và
+measurements/correlation_v2_O2.json; hai session mới được giữ riêng với session V1.
 
 ### 9.7. Dọn snapshot nộp cuối
 
 Giữ nguyên source, prediction, report, UART CSV, session .sr thành công,
 Gantt và JSON/manifest của V1/V2 để tái lập kết quả. Đã dọn Session 1
-trùng capture_v2_O2.sr, các .pvs chỉ chứa trạng thái hiển thị và các file
+trùng measurements/capture_v2_O2.sr, các .pvs chỉ chứa trạng thái hiển thị và các file
 thu thử lỗi. Bản lỗi vẫn có trong lịch sử Git; dữ liệu của baseline
 manifest là snapshot tại thời điểm V1, không phải danh sách bắt buộc của
 working tree cuối. .gitignore riêng Ex3 chỉ bỏ qua .pvs, không bỏ qua .sr.
+
+
+### 9.8. Gom dữ liệu đo
+
+Toàn bộ 16 file dữ liệu/Gantt/kết quả/log và hai manifest đã được chuyển
+vào [measurements/](measurements/README.md). Nội dung 16 file được kiểm tra
+SHA256 trước và sau khi chuyển; việc đổi thư mục không thay đổi số đo.
+
+Xem [Gantt V2 O0](measurements/gantt_v2_O0.svg) và
+[Gantt V2 O2](measurements/gantt_v2_O2.svg). Các lệnh tái phân tích trong
+V2_GUIDE.md và tests/w1e3/README.md dùng đường dẫn mới.
+measurements/BASELINE_V1_MANIFEST.json giữ nguyên các đường dẫn của snapshot lịch sử;
+các CSV/SR V1 còn hiện diện được tìm theo cùng tên trong measurements/.
+measurements/V2_MANIFEST.json cập nhật đường dẫn dữ liệu, giữ nguyên các giá trị SHA256.
+Prediction và firmware không thay đổi trong bước sắp xếp này.

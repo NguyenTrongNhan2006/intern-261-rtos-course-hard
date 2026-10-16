@@ -14,7 +14,7 @@ $w1e3OpenOcd = 'C:/Users/Nhan/AppData/Local/Microsoft/WinGet/Packages/xpack-dev-
 cmake -S . -B build/w1e3-v2-O2 -G Ninja "-DCMAKE_MAKE_PROGRAM=$w1e3Ninja" "-DOPENOCD_EXECUTABLE=$w1e3OpenOcd" "-DCMAKE_TOOLCHAIN_FILE=N:/Embedded Portfolio/intern-261-rtos-course-hard/cmake/arm-none-eabi.cmake" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_C_FLAGS_DEBUG=-O2 -g3"
 cmake --build build/w1e3-v2-O2 --target w1e3
 cmake --build build/w1e3-v2-O2 --target w1e3_flash
-& $w1e3Python tools/capture_w1e3.py --port COM19 --out week1/ex3/trace_v2_O2.csv --timeout 90
+& $w1e3Python tools/capture_w1e3.py --port COM19 --out week1/ex3/measurements/trace_v2_O2.csv --timeout 90
 ```
 
 Khi port mở, nhấn RESET. Hiệu chỉnh diễn ra trước scheduler, có thể cần
@@ -22,12 +22,13 @@ vài giây trước cửa sổ 6 giây chạy task. Chờ DONE; timeout không l
 Phân tích bằng script mới, không dùng parser JOB của V1:
 
 ```powershell
-& $w1e3Python tools/analyze_w1e3_v2.py week1/ex3/trace_v2_O2.csv --json-out week1/ex3/results_v2_O2.json
+& $w1e3Python tools/analyze_w1e3_v2.py week1/ex3/measurements/trace_v2_O2.csv --json-out week1/ex3/measurements/results_v2_O2.json
 ```
 
 O0 dùng flags -O0 -g3, thư mục build/w1e3-v2-O0 và tên trace_v2_O0.csv.
 GPIO mapping giữ PA4..PA8 = Idle/tau0/tau1/tau2/tau3, UART PA9 115200.
-LA mới đặt tên capture_v2_O0.sr và capture_v2_O2.sr; không ghi đè V1.
+LA mới lưu tại week1/ex3/measurements/capture_v2_O0.sr và
+week1/ex3/measurements/capture_v2_O2.sr; không ghi đè V1.
 
 ## 2. Framing
 
@@ -55,3 +56,6 @@ Residual phải được giữ đúng là residual, không tự gán toàn bộ 
 Analyzer kiểm tra đủ 205 job, shared release timestamp, sequence, bounds
 calibration và tính nhất quán counter. Nếu worst window có carry-in thì
 không áp cách trừ C của các job đầy đủ.
+
+Toàn bộ dữ liệu/Gantt/JSON/log ở [measurements/](measurements/README.md).
+Các tên chuẩn đã chứa số đo được kiểm chứng; lượt đo lại dùng tên mới để giữ dữ liệu cũ.

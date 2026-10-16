@@ -15,15 +15,17 @@
     "build/w1e3-v2-O0/w1e3.map": "0d88a2b634ceb86dafae5b71d8c7f639d50eaa8fee705f03de6722869d6c35a2",
     "build/w1e3-v2-O2/w1e3.elf": "ac10e642847d86df259d81b556367dcd582161f8b269c98b2bf9b9bcc9b37de5",
     "build/w1e3-v2-O2/w1e3.map": "be0b7b2c018f7150a35d7fbe25c6702bf319bf76c7101c173ec2a3a20187f8cb",
-    "week1/ex3/trace_v2_O0.csv": "19885627e1d656a769c1cd4741c765d51d089dcb494728faae1327b0b43794ac",
-    "week1/ex3/flash_v2_O0.txt": "003669b42a4319eddbe852b2790244e65ed7ec1e59e04ce6915de0315975edec",
-    "week1/ex3/results_v2_O0.json": "be35a1924a0595873b66740519904d62d4e635e9d525d48a8556613901b3a12d",
-    "week1/ex3/trace_v2_O2.csv": "47e1b3e8db5a85100cfbffe3a64123462246c8362f39e1ba22fa71045d574f74",
-    "week1/ex3/flash_v2_O2.txt": "e5288db2539c9983be5cb0fec9c87c0e47afa6fb01aa44d1c49a66dd1c8f8c2f",
-    "week1/ex3/results_v2_O2.json": "a0f2a92f3acce75ebfd1690632862aec81fc107b35ea19385dc04b4e2215036a",
-    "week1/ex3/capture_v2_O0.sr": "39675b8088e201098a709bdcdd4359e3bd652b8520c253055abc0109812d18b4",
-    "week1/ex3/correlation_v2_O0.json": "f109318436f5c5a62653a2fbb70990ebe465544256fdc2a2a9cee9f9a03cf9c1",
-    "week1/ex3/capture_v2_O2.sr": "424772992e362515eb5498230f1895000bb2b8b65e543ea520f333cb7c11afa2",
-    "week1/ex3/correlation_v2_O2.json": "1a5b07fcbff59a577a16b8af5d7ad1b4661db201553f686d83af9effbd1eaac7"
-  }
+    "week1/ex3/measurements/trace_v2_O0.csv": "19885627e1d656a769c1cd4741c765d51d089dcb494728faae1327b0b43794ac",
+    "week1/ex3/measurements/flash_v2_O0.txt": "003669b42a4319eddbe852b2790244e65ed7ec1e59e04ce6915de0315975edec",
+    "week1/ex3/measurements/results_v2_O0.json": "be35a1924a0595873b66740519904d62d4e635e9d525d48a8556613901b3a12d",
+    "week1/ex3/measurements/trace_v2_O2.csv": "47e1b3e8db5a85100cfbffe3a64123462246c8362f39e1ba22fa71045d574f74",
+    "week1/ex3/measurements/flash_v2_O2.txt": "e5288db2539c9983be5cb0fec9c87c0e47afa6fb01aa44d1c49a66dd1c8f8c2f",
+    "week1/ex3/measurements/results_v2_O2.json": "a0f2a92f3acce75ebfd1690632862aec81fc107b35ea19385dc04b4e2215036a",
+    "week1/ex3/measurements/capture_v2_O0.sr": "39675b8088e201098a709bdcdd4359e3bd652b8520c253055abc0109812d18b4",
+    "week1/ex3/measurements/correlation_v2_O0.json": "f109318436f5c5a62653a2fbb70990ebe465544256fdc2a2a9cee9f9a03cf9c1",
+    "week1/ex3/measurements/capture_v2_O2.sr": "424772992e362515eb5498230f1895000bb2b8b65e543ea520f333cb7c11afa2",
+    "week1/ex3/measurements/correlation_v2_O2.json": "1a5b07fcbff59a577a16b8af5d7ad1b4661db201553f686d83af9effbd1eaac7"
+  },
+  "artifact_directory": "week1/ex3/measurements",
+  "layout_note": "Measurement artifacts relocated without changing their bytes or SHA256 values. Source/ELF hashes retain their original capture-time meaning."
 }

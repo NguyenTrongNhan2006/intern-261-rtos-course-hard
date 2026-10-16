@@ -9,8 +9,8 @@ ap = argparse.ArgumentParser()
 ap.add_argument("optimization", choices=["O0", "O2"])
 args = ap.parse_args()
 repo = Path(__file__).resolve().parent.parent
-output = repo / f"week1/ex3/trace_v2_{args.optimization}.csv"
-flash_log = repo / f"week1/ex3/flash_v2_{args.optimization}.txt"
+output = repo / f"week1/ex3/measurements/trace_v2_{args.optimization}.csv"
+flash_log = repo / f"week1/ex3/measurements/flash_v2_{args.optimization}.txt"
 if output.exists() or flash_log.exists():
     raise SystemExit("V2 output exists; refusing to overwrite evidence")
 with serial.Serial("COM19", 115200, timeout=0.25) as uart:

@@ -29,3 +29,20 @@ Sai lệch dự đoán–đo được giải thích định lượng bằng chí
 
 ## Giờ dự kiến
 5 giờ.
+
+## Bố trí file và dữ liệu đo
+
+Code C/assembly, `include/`, prediction, report và hướng dẫn ở thư mục EX3.
+Toàn bộ UART CSV, session Logic Analyzer, Gantt, log nạp, kết quả JSON và
+manifest nằm trong [measurements/](measurements/README.md).
+
+| Nội dung | Vị trí |
+| :--- | :--- |
+| Kết quả và đối chiếu RTA/WCRT | [REPORT.md](REPORT.md) |
+| Hướng dẫn build và đo V2 | [V2_GUIDE.md](V2_GUIDE.md) |
+| Gantt V2 O0 | [gantt_v2_O0.svg](measurements/gantt_v2_O0.svg) |
+| Gantt V2 O2 | [gantt_v2_O2.svg](measurements/gantt_v2_O2.svg) |
+| Danh sách dữ liệu và lệnh phân tích | [measurements/README.md](measurements/README.md) |
+
+Hai file prediction giữ nguyên nội dung lịch sử; tên capture cũ trong đó
+hiện được tìm tại `measurements/`. Việc đổi thư mục không tạo phép đo mới.
