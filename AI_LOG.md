@@ -274,3 +274,21 @@ không đổi nội dung header
 
 Không tạo bản sao log hoặc file manifest mới
 Không stage, commit hoặc push, chỉ cung cấp lệnh để người học tự chạy
+
+## W1E4 – Dọn hai lượt thu không cần giữ
+
+Người học yêu cầu rà Week 1 và cung cấp lệnh tự xóa
+
+Codex kiểm tra file, link tài liệu, trạng thái Git và API checker
+API checker PASS 55 file
+
+Người học chạy lệnh loại static_rta_20261016_194218.csv vì toàn byte NUL
+và static_blinky_tuned_20261016_200901.csv vì trùng phần dữ liệu
+với bản hoàn chỉnh static_blinky_tuned_20261016_200954.csv
+
+Các file này trước đó nằm trong week1/ex4/measurements
+Đã cập nhật REPORT để phản ánh việc loại bỏ
+Giữ nguyên log heap, baseline còn lại và ba log tuned hoàn chỉnh
+Giữ dữ liệu W1E2 và các bộ bằng chứng V1/V2 của W1E3
+
+Codex cung cấp lệnh, không trực tiếp xóa, commit hoặc push trong lượt này

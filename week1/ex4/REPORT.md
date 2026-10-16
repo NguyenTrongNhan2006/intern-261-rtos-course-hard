@@ -293,15 +293,13 @@ Báo cáo không coi file hiện tại là bằng chứng Git xác nhận trình
 
 ## Phạm vi bằng chứng
 
-Log measurements/static_rta_20261016_194218.csv chứa toàn byte NUL,
-không dùng làm bằng chứng firmware chạy thành công
+Đã loại lượt thu RTA lúc 19:42:18 vì toàn bộ dữ liệu là byte NUL
+Đã loại lượt thu Blinky tuned lúc 20:09:01 vì thiếu header,
+nội dung còn lại giống bản hoàn chỉnh lúc 20:09:54
 
-Các file measurements/static_blinky_20261016_195838.csv,
-measurements/static_trace_20261016_195912.csv và
-measurements/static_blinky_tuned_20261016_200901.csv thiếu phần đầu
-Không dùng chúng thay cho ba log hoàn chỉnh sau tinh chỉnh
-
-Giữ nguyên các log lỗi hoặc thiếu đầu để thể hiện lịch sử thu dữ liệu
+Giữ hai log baseline Blinky và Trace dù thiếu phần đầu
+Chỉ dùng các dòng stack hợp lệ của chúng để đối chiếu baseline,
+không dùng thay cho ba log hoàn chỉnh sau tinh chỉnh
 
 Người học trực tiếp nạp firmware và thu UART
 Đã có ảnh console Verified OK của lượt nạp static RTA baseline
