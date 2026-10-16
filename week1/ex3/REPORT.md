@@ -195,7 +195,8 @@ D0), rồi 245 event còn lại khớp liên tiếp. Căn cạnh đầu của ri
 không phải kết quả PASS của đối chiếu đầy đủ; không bỏ/sửa event UART để
 ép khớp. Nguyên nhân cạnh Idle đầu không quan sát được chưa được xác định.
 
-Lần O2 đầu đã được giữ riêng ở capture_O2_first.sr. Sau khi thu lại và lưu
+Lần O2 đầu được lưu trong commit a624a01 với tên capture_O2_first.sr.
+Sau khi thu lại và lưu
 capture_O2.sr mới, checker khớp đầy đủ 254 event theo thứ tự tag và IN/OUT,
 với mapping D0..D4 tương ứng tag 0..4. Session mới có 10 triệu samples,
 sample rate 1 MHz, thời gian 10 giây.
@@ -270,7 +271,8 @@ qua COM19, 115200 8N1. Log flash và UART có tên flash_v2_O0/O2.txt và
 trace_v2_O0/O2.csv. Mỗi capture đủ 205 job, chung timestamp cho release
 cùng tick, không có deadline miss trong tập đã quan sát. Flash thử đầu
 của O2 verify được nhưng không DONE vì direct handler assertion; log
-attempt1 giữ riêng và không được tính là capture đo hợp lệ.
+attempt1 được lưu trong lịch sử commit ec693c2, không được tính là
+capture đo hợp lệ. File thử lỗi đã được dọn khỏi snapshot nộp cuối.
 
 ### 9.2. Calibration DWT
 
@@ -372,3 +374,12 @@ UART và LA thu ở các lượt reset riêng, không tuyên bố cùng một l�
 Đối chiếu chỉ bao phủ cửa sổ scheduler ring 254 event; JOB2 vẫn là bằng
 chứng đủ 205 job/5H. Kết quả cấu trúc ở correlation_v2_O0.json và
 correlation_v2_O2.json; hai session mới được giữ riêng với session V1.
+
+### 9.7. Dọn snapshot nộp cuối
+
+Giữ nguyên source, prediction, report, UART CSV, session .sr thành công,
+Gantt và JSON/manifest của V1/V2 để tái lập kết quả. Đã dọn Session 1
+trùng capture_v2_O2.sr, các .pvs chỉ chứa trạng thái hiển thị và các file
+thu thử lỗi. Bản lỗi vẫn có trong lịch sử Git; dữ liệu của baseline
+manifest là snapshot tại thời điểm V1, không phải danh sách bắt buộc của
+working tree cuối. .gitignore riêng Ex3 chỉ bỏ qua .pvs, không bỏ qua .sr.

@@ -1,0 +1,2 @@
+# PulseView per-user display state; raw .sr sessions remain versioned.
+*.pvs
