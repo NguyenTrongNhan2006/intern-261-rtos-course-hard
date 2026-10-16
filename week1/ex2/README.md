@@ -1,5 +1,9 @@
 # W1.2 – Tracer tự viết + đo context switch
 
+**Trạng thái: DONE phần triển khai và đo task set — cập nhật 16/10/2026.**
+
+Xem [REPORT.md](REPORT.md): jitter -O2 25 cycles, max sai lệch LA khoảng 1,71 µs.
+
 ## Mục tiêu
 Hiện thực trace hook ghi lại lịch sử chuyển task, đối chiếu với logic analyzer, và đo thời gian context switch.
 

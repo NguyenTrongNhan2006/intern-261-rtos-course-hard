@@ -1,0 +1,9 @@
+# Keep canonical evidence portable and the raw acquisition byte-exact.
+*.csv text eol=lf
+*.svg text eol=lf
+*.json text eol=lf
+disassembly_*.txt text eol=lf
+uart_O2_raw.txt binary
+*.sr -text
+*.png -text
+.gitattributes text eol=lf

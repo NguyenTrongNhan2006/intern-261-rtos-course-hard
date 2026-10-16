@@ -1,155 +1,137 @@
 # W1.2 – REPORT
 
-- MSSV: 2452882
-- Ngày đo baseline: 15/10/2026
-- MCU: STM32F103C8, Cortex-M3, HCLK = 72 MHz
-- Toolchain: Arm GNU GCC 14.2.1, `-Wall -Wextra -Werror`
-- PREDICTION commit trước khi chạy: `3fdd85c`
-- Firmware đã đo và disassembly đính kèm: **baseline `d673d5f`**
+- **Trạng thái: DONE — đã hoàn thành triển khai, build và đo task set của W1E2**
+- MSSV: 2452882; ngày đo lại: 16/10/2026
+- Firmware nguồn ghi nhận khi đo: `84a29299148879c755672a70f7961bcb2828e6e8`
+- Tracer đã sửa review từ commit `6271a5d`; số đo chính bên dưới là của bản đã sửa
+- PREDICTION commit trước khi chạy: `3fdd85c`, giữ nguyên nội dung dự đoán
+- Các con số baseline cũ của `d673d5f` chỉ dùng trong bảng so sánh lịch sử
 
 ## Số đo
 
-**Phân biệt baseline và firmware sau review**
+**Cấu hình**
 
-Toàn bộ số đo phần cứng trong báo cáo này thuộc baseline `d673d5f`.
-Bản sau review thay cách cập nhật GPIO, giới hạn tag và phạm vi helper;
-compiler có thể inline hoặc tạo code khác, nên phải nạp và đo lại trước
-khi áp các con số này cho firmware mới. Hiện bản mới đã build và kiểm
-thử logic trên host, **chưa flash/đo lại trên STM32**.
+- STM32F103C8, Cortex-M3, HCLK danh định 72 MHz, 72 cycles = 1 µs
+- Arm GNU GCC 14.2.1, CMake + Ninja, `-Wall -Wextra -Werror`
+- Preset `w1e2-o0`: Debug, `-O0 -g3`; preset `w1e2-o2`: Debug, `-O2 -g3`
+- FreeRTOS tick 1000 Hz; Task A/B cùng priority 1, Idle priority 0
+- A: tag 1, busy-wait 200 µs, period 2 ms; B: tag 2, busy-wait 300 µs, period 3 ms
+- UART1 PA9 TX: 115200 baud, 8N1, COM19 khi thu dữ liệu
+- Logic Analyzer: PulseView, 1 MHz, 10 triệu samples trong 10 giây
 
-Giữ nguyên CSV, `.sr`, ảnh và disassembly baseline để có thể kiểm tra
-kết quả cũ. Không ghi đè chúng bằng disassembly của firmware mới.
-
-**Cấu hình thí nghiệm baseline**
-
-- Hai cấu hình đều là `Debug`, lần lượt override flags `-O0 -g3` và `-O2 -g3`
-- FreeRTOS tick rate: 1000 Hz, tương ứng 1 ms/tick
-- Task A: tag 1, priority 1, busy-wait 200 µs, period 2 ms
-- Task B: tag 2, priority 1, busy-wait 300 µs, period 3 ms
-- Idle: tag 0, priority 0, không có tag callback
-- UART1: PA9 TX, 115200 baud, 8N1
-- Logic Analyzer: PulseView, sample rate 1 MHz, 10 triệu samples trong 10 giây
-- GPIO HIGH tại hook IN, LOW tại hook OUT
-
-| Task | Tag | GPIO | Logic Analyzer |
+| Task | Tag | GPIO | Kênh Logic Analyzer |
 | --- | ---: | --- | --- |
 | Idle | 0 | PA4 | D0 |
 | Task A | 1 | PA5 | D1 |
 | Task B | 2 | PA6 | D2 |
 
-Tracer đọc DWT tại đầu mỗi hook, sau đó lấy tag, ghi GPIO và static
-ring buffer. Buffer 256 slots giữ một slot để phân biệt đầy/rỗng,
-chủ động dừng sau OUT trước khi hết chỗ, nên mỗi capture có 254 records,
-`overflow=0`, đầu IN và cuối OUT. UART chỉ dump khi recording đã dừng,
-không blocking UART hoặc cấp phát bộ nhớ trong hook.
+`traceTASK_SWITCHED_IN/OUT` gọi tracer. Hook đọc `DWT->CYCCNT` tại
+đầu hàm, lấy application tag, ghi BSRR/BRR và static ring buffer.
+GPIO HIGH tại IN, LOW tại OUT. Không malloc hoặc gửi UART trong hook.
 
-**Phạm vi phép đo**
+Buffer 256 slots giữ một slot để phân biệt đầy/rỗng, dừng sau OUT
+trước khi hết chỗ. Capture nguyên vẹn có 254 records, `overflow=0`,
+đầu IN, cuối OUT; sau freeze Task B dump UART một lần.
 
-Đo `timestamp_IN_kế_tiếp - timestamp_OUT`, không phải toàn bộ latency
-context switch. Khoảng này gồm phần thân hook OUT sau timestamp,
-phần scheduler giữa hai hook, call/prologue hook IN đến timestamp.
-Nó không bao phủ toàn bộ exception entry/exit và PendSV save/restore.
-Vùng HIGH cũng có thể chứa ISR, không phải exclusive task CPU time.
+Định dạng CSV: `timestamp_cycles,task_tag,IN|OUT`; dòng `#` là metadata.
+Record RAM giữ timestamp 32-bit; lúc dump mở rộng qua wrap thành
+số cycles 64-bit. Trong cửa sổ đo này không xảy ra CYCCNT wrap.
+
+**Bảng thời gian OUT → next IN của firmware mới**
 
 | Optimization | min (cycle) | max (cycle) | jitter = max-min |
 | --- | ---: | ---: | ---: |
-| -O0 | 462 | 534 | 72 |
-| -O2 | 264 | 290 | 26 |
+| -O0 | 438 | 508 | 70 |
+| -O2 | 219 | 244 | 25 |
 
-Mỗi cấu hình có 126 mẫu OUT → next IN.
+Mỗi cấu hình có 126 mẫu OUT → next IN, tương ứng 127 cặp IN/OUT.
 
 | Optimization | min (µs) | max (µs) | mean (cycle) | mean (µs) |
 | --- | ---: | ---: | ---: | ---: |
-| -O0 | 6,417 | 7,417 | 497,952 | 6,916 |
-| -O2 | 3,667 | 4,028 | 278,214 | 3,864 |
+| -O0 | 6,083 | 7,056 | 472,841 | 6,567 |
+| -O2 | 3,042 | 3,389 | 232,206 | 3,225 |
 
-**Gantt và ảnh đo**
+Đây là khoảng giữa hai timestamp hook, gồm phần thân OUT còn lại,
+scheduler và phần đầu IN đến timestamp. Không bao phủ toàn bộ
+exception entry/exit hoặc PendSV save/restore. Vùng HIGH có thể chứa
+ISR, không phải exclusive task CPU time.
 
-![Gantt baseline -O0](gantt_O0.svg)
+**Gantt và waveform của lần đo mới**
 
-![Gantt baseline -O2](gantt_O2_la.svg)
+![Gantt -O0 mới](measure_20261016_075333/gantt_O0.svg)
 
-D0 = PA4 = Idle, D1 = PA5 = A, D2 = PA6 = B:
+![Gantt -O2 mới](measure_20261016_075333/gantt_O2.svg)
 
-![Logic Analyzer tổng quan](logic_O2_overview.png)
+![Waveform GPIO từ session mới](measure_20261016_075333/logic_O2.png)
 
-![Task A, hai cursor tại IN và OUT, khoảng 211 µs](logic_O2_taskA.png)
+Hình waveform được dựng từ samples thật trong `capture_O2.sr`, không
+phải ảnh chụp giao diện PulseView hoặc waveform mô phỏng. Phần trên
+là cụm đầu tiên đủ 254 cạnh, phần dưới zoom 650 µs đầu. Có thể mở
+session gốc trong PulseView để kiểm tra lại cùng các cạnh.
 
-Các đoạn ba kênh HIGH trước khi GPIO được khởi tạo không thuộc trace.
-Sau reset GPIO chưa được cấu hình output; không diễn giải các đoạn này
-thành ba task cùng chạy, cũng không dùng làm mốc căn thời gian.
+Ở cụm này, Task B HIGH 316 µs, Task A HIGH 211 µs; tính từ DWT tương
+ứng 316,042 và 210,597 µs. Khoảng GPIO từ B OUT đến A IN là 3 µs,
+trong khi khoảng timestamp là 238 cycles = 3,306 µs.
 
-**Dữ liệu và tái lập phân tích**
+**Dữ liệu và xử lý log thu nhiều lần RESET**
 
-- [CSV -O0](trace_O0.csv), [CSV -O2](trace_O2.csv)
-- [UART phiên LA gồm bốn capture](trace_O2_la.csv)
-- [Capture UART đầu tiên đã tách](trace_O2_la_single.csv)
-- [Session Logic Analyzer gốc](capture_O2.sr)
-- [Disassembly baseline -O0](disassembly_O0.txt), [-O2](disassembly_O2.txt)
-- [Kết quả đối chiếu có cấu trúc](correlation_O2.json)
-- [Script đối chiếu](../../tools/trace_correlate.py)
+Tất cả bằng chứng hiện tại đặt trong `measure_20261016_075333/`:
 
-Chạy từ repo root với Python 3, không cần package ngoài:
+- [CSV -O0, một capture đầy đủ](measure_20261016_075333/trace_O0.csv)
+- [CSV -O2, capture đầy đủ được chọn](measure_20261016_075333/trace_O2.csv)
+- [UART -O2 thô, giữ nguyên bytes](measure_20261016_075333/uart_O2_raw.txt)
+- [Session Logic Analyzer gốc](measure_20261016_075333/capture_O2.sr)
+- [Kết quả correlation](measure_20261016_075333/correlation_O2.json)
+- [Thống kê, SHA256 và provenance](measure_20261016_075333/measurement_summary.json)
+- [Disassembly -O0](measure_20261016_075333/disassembly_O0.txt)
+- [Disassembly -O2](measure_20261016_075333/disassembly_O2.txt)
 
-```text
-python tools/trace_gantt.py week1/ex2/trace_O0.csv --freq-hz 72000000
-python tools/trace_gantt.py week1/ex2/trace_O2.csv --freq-hz 72000000 --params-h week1/ex2/include/params.h
-python tools/trace_correlate.py week1/ex2/capture_O2.sr week1/ex2/trace_O2_la.csv
-python tools/trace_correlate.py week1/ex2/capture_O2.sr week1/ex2/trace_O2_la.csv --json
-```
+UART thô có 13 header: 6 capture đủ 254 records, 7 capture bị ngắt,
+một số dừng giữa dòng. Sáu capture đủ giống nhau về timestamp/tag/event.
+CSV -O2 chính là capture nguyên vẹn đầu tiên, không ghép records từ
+nhiều lần RESET, không sửa nội dung dòng hỏng để ép PASS. Log thô và
+thống kê từng block được giữ để truy vết quyết định chọn dữ liệu.
 
-`trace_correlate.py` đọc sigrok v2, kiểm tra thứ tự UART và cặp IN/OUT
-trước khi đối chiếu. Không sort dữ liệu lỗi, không fit hệ số clock scale;
-exit code 0 là đạt ngưỡng căn cạnh đầu, 1 là vượt ngưỡng, 2 là dữ liệu lỗi.
-Công cụ chỉ nhận digital samples một byte và tag có GPIO mapping.
+Session có 12 cụm GPIO đầy đủ. Một template UART nguyên vẹn khớp từng
+cụm về 254 tag/chiều cạnh và thời gian tương đối. Không có ID RESET
+chung giữa UART và LA nên không khẳng định ghép định danh từng lần
+thu UART với từng cụm; kết quả là đối chiếu template lặp lại được.
 
-Giữ các artifact ban đầu và các bản tách để bảo toàn quá trình đo:
-`trace_initial.csv` giống `trace_O0.csv`, `gantt_initial.svg` giống
-`gantt_O0.svg`. Các bản CSV -O2 có cùng records sau khi bỏ comment/
-blank line; `gantt_O2_la.svg` giống `gantt_O2.svg`. Không xem các file
-trùng này là các thí nghiệm độc lập.
+**Lệnh tái kiểm tra**
 
-**Tái lập build và kiểm tra bản sửa**
-
-Preset mới tách thư mục build khỏi ELF baseline cũ:
+Chạy từ repo root bằng Python 3 hợp lệ:
 
 ```text
 cmake --preset w1e2-o0
 cmake --build --preset w1e2-o0
 cmake --preset w1e2-o2
 cmake --build --preset w1e2-o2
-python -B -m unittest discover -s tests/w1e2 -p "test_*.py" -v
+python tools/trace_gantt.py week1/ex2/measure_20261016_075333/trace_O0.csv --freq-hz 72000000
+python tools/trace_gantt.py week1/ex2/measure_20261016_075333/trace_O2.csv --freq-hz 72000000 --params-h week1/ex2/include/params.h
+python tools/trace_correlate.py week1/ex2/measure_20261016_075333/capture_O2.sr week1/ex2/measure_20261016_075333/trace_O2.csv
 ```
 
-Hai preset dùng `Debug`, flags chính xác `-O0 -g3` / `-O2 -g3`.
-Không dùng mặc định `Release` vì mức tối ưu mặc định có thể khác.
-Output ở `build/w1e2-current-O0` và `build/w1e2-current-O2`.
+Script correlation stdlib-only đọc sigrok v2, kiểm tra thứ tự/cặp UART,
+không sort timestamps lỗi, không fit clock scale. Exit 0: đạt ngưỡng
+căn cạnh đầu; exit 1: vượt ngưỡng; exit 2: dữ liệu không hợp lệ.
+Không đưa log UART thô nhiều RESET trực tiếp vào `trace_gantt.py`.
 
-Bản sửa build sạch cả hai cấu hình. C host harness chạy source
-`tracer.c` thật với fake registers/UART, đã kiểm tra tag ngoài mapping,
-đổi GPIO range, lựa chọn getter thread/ISR, freeze/dump và hai lần wrap.
-Host test kiểm tra logic/framing, không xác nhận timing hoặc bus ordering
-trên Cortex-M3. Xem [lệnh chạy host test](../../tests/w1e2/README.md).
-
-API checker full scope mặc định `platform week1 week2 week3 week4`:
+Hai build mới kiểm tra lại đều thành công. API checker full scope
+`platform week1 week2 week3 week4`:
 
 ```text
-check_api: PASS (47 files)
+check_api: PASS (53 files)
 ```
 
-Script Bash dùng Python 3 để lọc comment. Trên Windows cần Git Bash,
-Python 3 hợp lệ và xử lý CRLF khi chạy script. PASS API không thay thế
-build, flash hoặc phép đo phần cứng.
+Bộ host test bổ sung đã được chạy ở giai đoạn sửa review; sau đó xóa
+khỏi repo theo yêu cầu dọn bài. Không có lệnh/link đến test đã xóa.
+Các kiểm tra hiện tái lập bằng build, API checker và hai script trên.
 
 ## Giải thích sai lệch (ĐỊNH LƯỢNG)
 
-**1. Căn thời gian và sai số Gantt / Logic Analyzer của baseline**
+**1. Gantt so với Logic Analyzer**
 
-Có bốn lần capture, mỗi lần khớp đủ 254 events, không lệch tag hoặc
-chiều cạnh trong cửa sổ trace. Bốn đoạn UART giống hệt nhau về cycles,
-tag và event, cho thấy baseline lặp lại được trong cấu hình này.
-
-Phép so sánh bảo thủ lấy IN đầu tiên của Task B làm mốc:
+Với mỗi cụm GPIO, lấy IN đầu của Task B làm mốc:
 
 ```text
 t_DWT(i) = (cycles_i - cycles_0) / 72                [µs]
@@ -157,190 +139,182 @@ t_LA(i)  = (sample_i - sample_0) / 1 MHz × 10^6      [µs]
 d_i      = t_LA(i) - t_DWT(i)
 ```
 
-Chỉ dịch origin, không thay tỷ lệ trục thời gian.
+Chỉ dịch origin, không co giãn trục thời gian. Các cạnh khởi tạo trước
+trace và đoạn capture thiếu nằm ngoài cửa sổ 254-event được chọn;
+không bỏ một cạnh bên trong cửa sổ để làm khớp template.
 
-| Capture | max abs(d_i) khi căn cạnh đầu (µs) |
-| --- | ---: |
-| 1 | 1,889 |
-| 2 | 1,472 |
-| 3 | 1,653 |
-| 4 | 1,111 |
-
-Ngưỡng `W1E2_CORRELATION_TOLERANCE_US = 16 µs` đạt ngay với cách
-căn này: max khoảng 1,89 µs. Đây vẫn là tiêu chí PASS của script.
-
-Ví dụ capture đầu, origin LA tại 3035374 µs:
-
-| Event | Tracer tương đối (µs) | LA tương đối (µs) | abs(d_i) (µs) |
+| Cụm GPIO | Origin LA (ms) | max abs(d_i), căn cạnh đầu (µs) | max residual sau fit mean PendSV (µs) |
 | --- | ---: | ---: | ---: |
-| Task B OUT đầu tiên | 316,583 | 316 | 0,583 |
-| Event 128 | 42328,500 | 42327 | 1,500 |
-| Event 254 | 84328,500 | 84327 | 1,500 |
+| 1 | 2251,226 | 1,347 | 0,744 |
+| 2 | 3797,169 | 1,347 | 0,744 |
+| 3 | 4454,719 | 1,556 | 0,608 |
+| 4 | 5105,788 | 1,556 | 0,796 |
+| 5 | 5719,041 | 1,556 | 0,695 |
+| 6 | 6276,437 | 1,708 | 0,690 |
+| 7 | 6830,867 | 1,347 | 0,702 |
+| 8 | 7401,493 | 1,097 | 0,763 |
+| 9 | 7924,701 | 1,097 | 0,699 |
+| 10 | 8395,575 | 1,556 | 0,628 |
+| 11 | 8967,935 | 1,556 | 0,721 |
+| 12 | 9493,947 | 1,556 | 0,628 |
 
-Event đầu gọi từ `vTaskStartScheduler` ở thread mode; các event còn lại
-được gọi trong PendSV. Hai đường lấy tag dùng critical section khác
-nhau nên latency timestamp → GPIO không nhất thiết bằng nhau.
-Một cạnh mốc còn mang pha lượng tử của sample 1 µs.
+Max căn cạnh đầu trên 12 cụm là **1,708 µs ≤ 16 µs**,
+đạt `W1E2_CORRELATION_TOLERANCE_US`.
 
-Để tách offset hằng khỏi độ phân tán, tính thêm fit mean trên **253
-events trong PendSV**, loại event đầu ra khỏi tập fit và thống kê:
+Event IN đầu chạy ở thread mode từ `vTaskStartScheduler`; 253 event
+còn lại chạy trong PendSV. Script báo thêm fit offset hằng theo mean
+của 253 event PendSV, loại event đầu khỏi tập fit và thống kê đó.
+Residual lớn nhất của tập PendSV sau fit là khoảng 0,796 µs.
 
-```text
-offset = mean(d_i), i = 1..253
-e_i = d_i - offset
-```
+PASS vẫn dùng max căn cạnh đầu, không dùng mean fit để che outlier.
+Sampling 1 MHz có bước 1 µs. Residual nhỏ hơn 1 µs không phải chứng
+nhận độ chính xác vật lý dưới 1 µs; latency timestamp → GPIO, pha
+lấy mẫu và timebase đều có ảnh hưởng. Không hiệu chuẩn HSE/LA từ dữ
+liệu này hoặc dùng nó để kết luận nguyên nhân sai lệch W1.1.
 
-| Capture | Mean d_i PendSV (µs) | SD PendSV (µs) | max abs(e_i) PendSV (µs) | Residual event thread đầu (µs) |
-| --- | ---: | ---: | ---: | ---: |
-| 1 | -1,079 | 0,378 | 0,810 | 1,079 |
-| 2 | -0,810 | 0,231 | 0,662 | 0,810 |
-| 3 | -0,881 | 0,290 | 0,772 | 0,881 |
-| 4 | -0,268 | 0,406 | 0,843 | 0,268 |
+**2. So sánh -O0 và -O2 bằng disassembly hiện tại**
 
-Nếu fit mean trên cả 254 events, max residual lần lượt là 1,074;
-0,807; 0,878; 0,844 µs. Vì vậy phải ghi rõ phạm vi fit, không gọi
-0,84 µs là sai số lớn nhất trên toàn bộ events sau mọi cách căn.
-Sai số có dấu cũng không luôn âm: capture 4 có event d_i khoảng +0,417 µs.
+Mean giảm 472,841 → 232,206 cycles, chênh 240,635 cycles ≈ 3,342 µs,
+mean giảm khoảng 50,9% khi chuyển từ -O0 sang -O2 với cùng task set.
 
-Sampling 1 MHz tương ứng 1 µs/sample. Residual sau fit phù hợp với
-lượng tử hóa và biến thiên timestamp → GPIO, nhưng không chứng minh
-độ chính xác vật lý tuyệt đối dưới 1 µs, cũng không hiệu chuẩn HSE
-hoặc timebase Logic Analyzer. Không suy ra clock drift chính xác từ
-một cửa sổ khoảng 84 ms và một vài cạnh.
-
-**2. Assembly và chênh lệch -O0 / -O2 của baseline**
-
-Mean giảm 497,952 → 278,214 cycles, giảm khoảng 219,738 cycles,
-3,052 µs hoặc 44,1%.
-
-| Hàm baseline | -O0 (bytes) | -O2 (bytes) |
+| Hàm trong firmware mới | -O0 (bytes) | -O2 (bytes) |
 | --- | ---: | ---: |
-| `gpio_set` | 38 | 12 |
+| `tracer_current_tag` | 82 | 50 |
+| `tracer_record` / bản local do compiler tạo | 228 | 204 |
 | `tracer_on_switched_out` | 60 | 44 |
 | `vTaskSwitchContext` | 180 | 128 |
 
-Đây là kích thước code, không phải cycle count.
-`-O0` tạo stack frame, lưu rồi đọc lại timestamp/tag từ stack;
-`-O2` giữ timestamp trong `r4`, giảm truy cập stack và dùng tail call
-`b.w tracer_record` ở cuối hook. GPIO helper cũng giảm stack access.
+Kích thước code không phải cycle count. Đoạn hook OUT -O0 có stack
+frame và lưu/đọc timestamp qua stack:
 
-Đường OUT → IN chứa phần thân hook OUT, gồm lấy application tag,
-`FromISR` critical section với BASEPRI, callback tag khi không NULL,
-GPIO, buffer write, DMB và tính free slots. `DMB` là memory barrier;
-CMSIS intrinsic cũng có compiler memory clobber, không chỉ là NOP
-hoặc phép thay thế cho giả định một producer.
+```asm
+push    {r7, lr}
+sub     sp, #8
+...
+str     r3, [r7, #4]
+...
+ldr     r0, [r7, #4]
+bl      tracer_record
+```
 
-Các lệnh chính save/restore register của PendSV giữ nguyên.
-Không biến số lệnh hoặc kích thước code thành cycle count khi chưa
-xét pipeline, branch, Flash wait state và bus access.
+Ở -O2, timestamp giữ trong r4, ít thao tác stack hơn và tail-call
+sang hàm local `tracer_record.isra.0`:
 
-**3. Jitter theo từng đường chuyển task**
+```asm
+push    {r4, lr}
+ldr     r4, [r2, #4]
+...
+mov     r0, r4
+ldmia.w sp!, {r4, lr}
+b.w     tracer_record.isra.0
+```
 
-| Hướng switch baseline | Số mẫu | -O0 min–max (cycles) | -O2 min–max (cycles) |
+Trong hook, GPIO được ghi trực tiếp bằng BSRR/BRR, không gọi
+`gpio_set/clear`. Hàm producer là static; compiler có thể chuyên biệt
+hóa nó. Không gọi việc này là toàn bộ `tracer_record` đã inline vì
+ELF -O2 vẫn có hàm local riêng.
+
+PendSV giữ các thao tác chính save/restore register. Phần giảm thời
+gian gồm scheduler C và instrumentation; không quy toàn bộ chênh
+240,635 cycles cho một hàm. DMB đảm bảo thứ tự memory access, và
+intrinsic có compiler memory clobber; không thay giả định một producer.
+
+**3. Jitter và đường xử lý phụ thuộc task**
+
+| Hướng switch | Số mẫu | -O0 min–max (cycles) | -O2 min–max (cycles) |
 | --- | ---: | ---: | ---: |
-| Idle → A | 28 | 462 | 264 |
-| Idle → B | 28 | 462 | 264 |
-| B → A | 14 | 498 | 288 |
-| A → Idle | 42 | 528–534 | 289–290 |
-| B → Idle | 14 | 534 | 290 |
+| Idle → A | 28 | 438 | 219 |
+| Idle → B | 28 | 438 | 219 |
+| B → A | 14 | 472 | 238 |
+| A → Idle | 42 | 502–508 | 242–244 |
+| B → Idle | 14 | 508 | 244 |
 
-Với -O2, jitter tổng = 290 - 264 = 26 cycles ≈ 0,361 µs,
-nhỏ hơn `W1E2_CTXSW_JITTER_MAX_CYCLES_O2 = 355` → PASS baseline.
+Jitter -O2 = 244 - 219 = **25 cycles ≈ 0,347 µs**,
+nhỏ hơn `W1E2_CTXSW_JITTER_MAX_CYCLES_O2 = 355` → PASS.
 
-So B → A với Idle → A: chênh 24 cycles ở -O2 và 36 ở -O0.
-Disassembly `tracer_current_tag` xác nhận Idle có callback NULL nên
-return sớm, còn task A/B gọi gián tiếp callback và kiểm tra tag.
-Đây là bằng chứng tracer tạo đường xử lý phụ thuộc tag.
+Idle → A/B so với B → A chênh 19 cycles ở -O2 và 34 ở -O0.
+Disassembly cho thấy tag Idle NULL return sớm, task A/B phải gọi
+callback. Đây là bằng chứng có đường instrumentation phụ thuộc tag.
+B → A so với B → Idle chênh thêm 6 / 36 cycles; còn có nhánh tìm
+priority, ready-list end marker, pipeline và memory access.
 
-So B → Idle với B → A: chênh 2 cycles ở -O2 và 36 ở -O0.
-Phần chọn priority có đường tìm xuống Idle và đường giữ priority 1;
-ready-list rotation cũng có nhánh kiểm tra end marker.
+Về số học, 25 = 19 + 6 cycles giữa các nhóm, nhưng đây không phải
+đo tách độc lập chứng minh 19 cycles chỉ thuộc tracer và 6 chỉ thuộc
+kernel. Jitter của toàn tập khác jitter trên một đường: Idle → task
+đều 219 cycles, còn A → Idle trải 242–244 cycles ở -O2.
 
-Về số học, độ trải 26 = 24 + 2 cycles trong các nhóm quan sát.
-24 cycles chiếm khoảng 92,3% độ trải đó. Đây là phân tích theo nhóm,
-không phải phép đo độc lập chứng minh chính xác 24 cycles thuộc tracer
-và 2 cycles chỉ thuộc kernel: cùng số vòng tìm priority không đảm bảo
-mọi nhánh ready-list hoặc trạng thái bus giống nhau. Muốn tách tuyệt
-đối phải timestamp thêm cuối hook OUT, hoặc đo các biến thể kiểm soát.
+**4. Hiệu quả sửa review và đối chiếu PREDICTION**
 
-Không gán riêng 2 cycles cho Flash wait state chỉ từ CSV/disassembly.
+| Phiên bản | Mean -O0 (cycles) | Mean -O2 (cycles) | Jitter -O2 (cycles) |
+| --- | ---: | ---: | ---: |
+| Baseline `d673d5f` | 497,952 | 278,214 | 26 |
+| Bản sửa đã đo lại | 472,841 | 232,206 | 25 |
 
-**4. PREDICTION và giới hạn task set**
+Mean giảm khoảng 5,0% ở -O0 và 16,5% ở -O2 so với baseline.
+Baseline chỉ là số lịch sử, artifact cũ có thể xem lại trong Git commit
+`d673d5f`. Các file nộp hiện tại thuộc lần đo mới, không trộn ảnh cũ.
 
-| Đại lượng baseline | Dự đoán trước khi chạy | Thực tế |
+| Đại lượng | PREDICTION trước khi chạy | Đo lại firmware mới |
 | --- | ---: | ---: |
-| -O0 min/max | 300/700 cycles | 462/534 cycles |
-| -O2 min/max | 120/350 cycles | 264/290 cycles |
-| -O2 jitter | 230 cycles | 26 cycles |
-| Max sai lệch căn cạnh đầu | 4 µs | Khoảng 1,89 µs |
+| -O0 min/max | 300/700 cycles | 438/508 cycles |
+| -O2 min/max | 120/350 cycles | 219/244 cycles |
+| -O2 jitter | 230 cycles | 25 cycles |
+| Max sai lệch căn cạnh đầu | 4 µs | 1,708 µs |
 
-PREDICTION đã tính scheduler và instrumentation vào phạm vi đo.
-Sai lệch không phải do quên phạm vi đó, mà do budget từng đường chưa
-được xác lập từ implementation: min -O0 cao hơn dự đoán 162 cycles,
-min -O2 cao hơn 144 cycles. Các getter, tag callback, GPIO, buffer,
-barrier và stack traffic thực tế nặng hơn ước lượng ban đầu.
-Chênh theo tag quan sát được riêng là 36 / 24 cycles, chưa giải thích
-hết toàn bộ phần budget thiếu nên không quy hết 144 cycles cho nó.
+PREDICTION đã tính instrumentation vào phạm vi đo, nhưng budget ban
+đầu chưa được xác lập từ implementation: min thực cao hơn dự đoán
+138 cycles ở -O0 và 99 ở -O2. Tag getter, callback, barrier, buffer
+và scheduler thực tế nặng hơn budget. Chưa đo tách để phân bổ toàn
+bộ phần chênh đó cho từng thành phần.
 
-Jitter nhỏ hơn dự đoán trong baseline có các điều kiện:
+Jitter thấp hơn dự đoán trong task set giới hạn này: chỉ priority 0/1,
+không chủ động tạo tải ISR priority cao; trong OUT → IN, BASEPRI =
+0x50 che SysTick priority 15. IRQ priority cao hơn ngưỡng, NMI và
+HardFault vẫn có thể ảnh hưởng nếu xuất hiện.
 
-- Chỉ priority 0 và 1, chỉ khảo sát các đường tìm priority tương ứng
-- Trong khoảng OUT → IN, port đã đặt BASEPRI = 0x50, priority threshold 5;
-  SysTick priority 15 bị mask, không chen vào cửa sổ này
-- Không có tải ISR priority cao được chủ động thêm vào; NMI/HardFault
-  và IRQ priority cao hơn ngưỡng vẫn không bị BASEPRI này che
-- Bốn UART capture lặp lại giống hệt nhau trong task set đã đo
-
-Chỉ có năm hướng switch ở bảng trên. Chưa khảo sát khoảng cách
-priority ≥ 2, chuyển task do time slicing hoặc yield từ ISR.
-Max 290 cycles không phải worst-case bound cho task set khác.
-
-PREDICTION giả định LA 24 MHz; thực tế dùng 1 MHz. Báo cáo giữ nguyên
-prediction commit cũ và ghi rõ cấu hình đo thực tế.
+Mới có năm hướng switch; chưa khảo sát priority gap ≥2, time slicing
+hoặc yield từ ISR. Max 244 cycles không phải bound cho mọi task set.
+Sampling thực tế 1 MHz khác giả định 24 MHz trong PREDICTION;
+ngưỡng correlation vẫn đạt. Giữ nguyên prediction cũ.
 
 ## Trả lời câu hỏi trade-off
 
 Tick 1 ms quyết định Ready/release time, không lượng tử hóa timestamp
-DWT: một cycle danh định khoảng 13,89 ns. Khoảng OUT → IN đo được
-3,667–4,028 µs không phải bội số 1 ms.
+DWT: một cycle danh định ≈ 13,89 ns. Khoảng đo -O2 3,042–3,389 µs
+không phải bội số 1 ms.
 
-Trong các đường quan sát, tag lookup của tracer là nguồn chênh lệch
-có bằng chứng cụ thể: Idle không callback, task có callback; hai nhóm
-chênh 24 cycles ở -O2, so với jitter tổng 26 cycles. Vì vậy không được
-trình bày toàn bộ jitter như biến thiên chi phí kernel thuần.
+Trong dữ liệu có bằng chứng tracer phụ thuộc tag: callback NULL ở
+Idle và callback task tạo các đường khác nhau; hai nhóm chênh 19 cycles
+ở -O2, so với độ trải tổng 25 cycles. Vì vậy không diễn giải toàn bộ
+jitter như chi phí kernel thuần. Chưa có ablation để xếp hạng riêng
+GPIO update và ring-buffer write; phần mean giảm khi đổi optimization
+cũng bao gồm scheduler và các helper.
 
-GPIO update và buffer write đều xâm nhập phép đo. Chưa có ablation
-để xếp hạng riêng GPIO và ring-buffer overhead; 44,1% mean giảm khi
-optimization thay đổi cũng gồm scheduler và các helper. Phân tích
-định lượng theo nhóm ở trên là bằng chứng hiện có, không thay thế
-một phép đo tách thành phần.
+Static buffer, producer private và dump sau freeze giữ UART khỏi
+cửa sổ đo. Đổi lại chỉ có một cửa sổ hữu hạn và vẫn có instrumentation
+overhead. GPIO/timestamp latency cùng sampling 1 µs ảnh hưởng phép
+đối chiếu; residual sau căn offset không đo riêng từng nguồn này.
 
-Static ring buffer và UART dump sau freeze giúp giới hạn nhiễu UART,
-đổi lại chỉ giữ một cửa sổ hữu hạn. Việc bỏ GPIO helper call và làm
-helper private trong bản sửa làm thay đổi code sinh ra, nên phải đo
-lại trước khi dùng timing mới cho W1.3 hoặc kết luận đạt rubric.
+Tag ngoài GPIO mapping vẫn vào UART, không assert vì tag lạ trong
+hook. Mask suy từ FIRST/LAST; tag callback hợp lệ 1..254, NULL dành
+cho Idle 0; giá trị callback không hợp lệ thành marker 255. Ứng dụng
+phải cung cấp callback nhanh, không blocking.
 
-**Hành vi firmware sau review**
+Unwrap khi dump chỉ khôi phục được khi hai records liên tiếp cách nhau
+nhỏ hơn 2^32 cycles ≈ 59,65 s tại 72 MHz. Record đầu không cho biết
+số vòng trước đó. Lần đo ~84 ms không kiểm thử wrap dài trên MCU;
+kiểm tra wrap bằng host trước đây là kiểm tra logic, không phải
+phép đo thực chạy 120 giây.
 
-- `tracer.h` trở về interface khóa học gốc, không expose producer/stop helper
-- Một producer hợp lệ: hook thread đầu tiên rồi PendSV; helper ghi record là static
-- GPIO mask và tag range suy từ `TRACER_FIRST_PIN/LAST_PIN`; pin range hợp lệ 0..15
-- Tags ngoài số GPIO vẫn lưu UART, bỏ GPIO update, không assert trong hook
-- NULL callback quy ước Idle tag 0; callback 1..254 hợp lệ, giá trị âm hoặc
-  ≥255 thành marker 255. Callback do ứng dụng cung cấp phải nhanh và không blocking
-- GPIO trong hook ghi trực tiếp BSRR/BRR, không đổi sampling point DWT
-- Record trong RAM vẫn 32-bit để giữ chi phí hook; dump mở rộng sang 64-bit
-  bằng cộng 2^32 khi timestamp thô giảm. CSV vẫn là `cycles,tag,IN|OUT`
-- Điều kiện unwrap: khoảng giữa hai records liên tiếp **nhỏ hơn**
-  2^32 cycles, khoảng 59,65 s tại 72 MHz; số wrap trước record đầu không biết.
-  Nếu khoảng cách ≥ một vòng counter thì không thể khôi phục số vòng chỉ
-  bằng CYCCNT, cần counter khác hoặc cơ chế lấy mẫu bổ sung
+**Kết quả hoàn thiện**
 
-Host test đã kiểm tra hai wrap quan sát được, không phải bằng chứng
-đã chạy firmware mới 120 giây trên phần cứng.
+Code, build, Gantt, UART/LA, bảng -O0/-O2 và phân tích định lượng đã
+hoàn thành cho task set này. Hai ngưỡng Output đạt. Phần vấn đáp do
+mentor đánh giá trực tiếp; kết quả hữu hạn không chứng minh worst-case
+cho mọi tải hoặc task set khác.
 
-**Nguồn tham chiếu**
+**Tham chiếu**
 
-- [sigrok session v2](https://sigrok.org/wiki/File_format:Sigrok/v2)
-- [CMake presets v2 / CMake 3.20](https://cmake.org/cmake/help/v3.20/manual/cmake-presets.7.html)
-- [CMSIS Core register access / BASEPRI](https://arm-software.github.io/CMSIS_5/Core/html/group__Core__Register__gr.html)
+- [sigrok v2](https://sigrok.org/wiki/File_format:Sigrok/v2)
+- [CMake presets](https://cmake.org/cmake/help/v3.20/manual/cmake-presets.7.html)
+- [CMSIS Core / BASEPRI](https://arm-software.github.io/CMSIS_5/Core/html/group__Core__Register__gr.html)

@@ -1,0 +1,351 @@
+{
+  "date": "2026-10-16",
+  "recorded_source_commit": "84a29299148879c755672a70f7961bcb2828e6e8",
+  "build_presets": [
+    "w1e2-o0",
+    "w1e2-o2"
+  ],
+  "hclk_hz": 72000000,
+  "jitter_bound_cycles": 355,
+  "correlation_bound_us": 16,
+  "stats": {
+    "O0": {
+      "n": 126,
+      "min": 438,
+      "max": 508,
+      "mean": 472.8412698412698,
+      "jitter": 70,
+      "directions": [
+        {
+          "from": 0,
+          "to": 1,
+          "n": 28,
+          "min": 438,
+          "max": 438
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "n": 28,
+          "min": 438,
+          "max": 438
+        },
+        {
+          "from": 1,
+          "to": 0,
+          "n": 42,
+          "min": 502,
+          "max": 508
+        },
+        {
+          "from": 2,
+          "to": 0,
+          "n": 14,
+          "min": 508,
+          "max": 508
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "n": 14,
+          "min": 472,
+          "max": 472
+        }
+      ]
+    },
+    "O2": {
+      "n": 126,
+      "min": 219,
+      "max": 244,
+      "mean": 232.20634920634922,
+      "jitter": 25,
+      "directions": [
+        {
+          "from": 0,
+          "to": 1,
+          "n": 28,
+          "min": 219,
+          "max": 219
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "n": 28,
+          "min": 219,
+          "max": 219
+        },
+        {
+          "from": 1,
+          "to": 0,
+          "n": 42,
+          "min": 242,
+          "max": 244
+        },
+        {
+          "from": 2,
+          "to": 0,
+          "n": 14,
+          "min": 244,
+          "max": 244
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "n": 14,
+          "min": 238,
+          "max": 238
+        }
+      ]
+    }
+  },
+  "baseline_commit": "d673d5f",
+  "baseline_stats": {
+    "O0": {
+      "n": 126,
+      "min": 462,
+      "max": 534,
+      "mean": 497.95238095238096,
+      "jitter": 72,
+      "directions": [
+        {
+          "from": 0,
+          "to": 1,
+          "n": 28,
+          "min": 462,
+          "max": 462
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "n": 28,
+          "min": 462,
+          "max": 462
+        },
+        {
+          "from": 1,
+          "to": 0,
+          "n": 42,
+          "min": 528,
+          "max": 534
+        },
+        {
+          "from": 2,
+          "to": 0,
+          "n": 14,
+          "min": 534,
+          "max": 534
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "n": 14,
+          "min": 498,
+          "max": 498
+        }
+      ]
+    },
+    "O2": {
+      "n": 126,
+      "min": 264,
+      "max": 290,
+      "mean": 278.2142857142857,
+      "jitter": 26,
+      "directions": [
+        {
+          "from": 0,
+          "to": 1,
+          "n": 28,
+          "min": 264,
+          "max": 264
+        },
+        {
+          "from": 0,
+          "to": 2,
+          "n": 28,
+          "min": 264,
+          "max": 264
+        },
+        {
+          "from": 1,
+          "to": 0,
+          "n": 42,
+          "min": 289,
+          "max": 290
+        },
+        {
+          "from": 2,
+          "to": 0,
+          "n": 14,
+          "min": 290,
+          "max": 290
+        },
+        {
+          "from": 2,
+          "to": 1,
+          "n": 14,
+          "min": 288,
+          "max": 288
+        }
+      ]
+    }
+  },
+  "raw_uart_sha256": "30769dc84ca584bb6f583d19f54d8679dfc94bd766b54bb4b34929ee8d1453ad",
+  "raw_uart_blocks": [
+    {
+      "block": 1,
+      "records": 254,
+      "complete": true,
+      "malformed_lines": []
+    },
+    {
+      "block": 2,
+      "records": 254,
+      "complete": true,
+      "malformed_lines": []
+    },
+    {
+      "block": 3,
+      "records": 254,
+      "complete": true,
+      "malformed_lines": []
+    },
+    {
+      "block": 4,
+      "records": 254,
+      "complete": true,
+      "malformed_lines": []
+    },
+    {
+      "block": 5,
+      "records": 231,
+      "complete": false,
+      "malformed_lines": [
+        "5646613,1?"
+      ]
+    },
+    {
+      "block": 6,
+      "records": 231,
+      "complete": false,
+      "malformed_lines": [
+        "5646613,?"
+      ]
+    },
+    {
+      "block": 7,
+      "records": 246,
+      "complete": false,
+      "malformed_lines": [
+        "6014119,"
+      ]
+    },
+    {
+      "block": 8,
+      "records": 196,
+      "complete": false,
+      "malformed_lines": [
+        "4782857,0,I?"
+      ]
+    },
+    {
+      "block": 9,
+      "records": 179,
+      "complete": false,
+      "malformed_lines": []
+    },
+    {
+      "block": 10,
+      "records": 238,
+      "complete": false,
+      "malformed_lines": [
+        "5813?"
+      ]
+    },
+    {
+      "block": 11,
+      "records": 214,
+      "complete": false,
+      "malformed_lines": [
+        "?"
+      ]
+    },
+    {
+      "block": 12,
+      "records": 254,
+      "complete": true,
+      "malformed_lines": []
+    },
+    {
+      "block": 13,
+      "records": 254,
+      "complete": true,
+      "malformed_lines": []
+    }
+  ],
+  "selected_raw_uart_block": 1,
+  "complete_raw_uart_blocks": 6,
+  "complete_raw_uart_blocks_identical": true,
+  "logic_samples": 10000000,
+  "logic_samplerate_hz": 1000000.0,
+  "matched_gpio_sequences": 12,
+  "max_first_edge_error_us": 1.7083333333430346,
+  "max_pendsv_mean_fit_residual_us": 0.7956192358368592,
+  "first_sequence_origin_us": 2251226,
+  "first_sequence_span_us": 84326.0,
+  "first_durations": {
+    "task_b_gpio_us": 316.0,
+    "task_a_gpio_us": 211.0,
+    "task_b_dwt_us": 316.0416666666667,
+    "task_a_dwt_us": 210.59722222222223,
+    "b_out_to_a_in_gpio_us": 3.0,
+    "b_out_to_a_in_dwt_us": 3.3055555555555554
+  },
+  "elf_sha256": {
+    "O0": "e7ea6756f0f00825b1364ddebe900c9fe62665686f70f429da2b1cf0aa9e3447",
+    "O2": "df52817b92c7439b4c80e0db1fb6f1ad28ce6ad2f177c92a80d6fc53a174ba68"
+  },
+  "firmware_source_sha256": {
+    "CMakeLists.txt": "19ce83702dbfb45c3119019b2dd597cee43bc76069f4b639fb2b019092dd2a80",
+    "CMakePresets.json": "3b733bde2f88b08e84ef7ef6ce9a11acd930882376f0f899ae4d793e20209a35",
+    "platform/startup.c": "799dcf528bedf1dcadc7fe62c012f5d69ec87d66944feca72ae5d7f44bb2bd5d",
+    "platform/system.c": "06af7468de7a98697ddc3d96164bb224b86fef8763b66fca432f06b1bd86c037",
+    "platform/gpio.c": "91f4bc00e3d4dd353c1b7e077fcf567e8fcc8e5601b3a1c70a516719c0e14150",
+    "platform/uart.c": "fc05ebcfecc9ca3d16e958f9a8aca2b6721042849cce1d1d00dc216410663acd",
+    "platform/include/uart.h": "a10627ffa17ebc33318b5ce8a6edc284a0fc4951a2bbb256f762b3119a30f89e",
+    "week1/ex2/main.c": "2263021d7d6a9fb4af6dd61d58d6f6ebf5bd0a2d3d46fa4d97a23b6084f25ccd",
+    "week1/ex2/trace_app.c": "6410cafe6cb20af88163e00d7ad4f62132b682e7664c97087c17269ef0ef00e5",
+    "week1/ex2/tracer.c": "1517b3d09ecebd66c17364b459afe0535d172f38cf445f35097914ef548cdc09",
+    "week1/ex2/include/tracer.h": "096c475ada4e5388d32b3bb09c2cfe8b66c7da07de2100865af64ed68b564d49",
+    "week1/ex2/include/FreeRTOSConfig.h": "90e9e1072308ee74bf4d3b3cad6b5a1a75ccb347657dd6cecca498ac73f24f58"
+  },
+  "notes": [
+    "One intact 254-event UART template is compared to 12 full GPIO sequences; no per-reset pairing ID is available.",
+    "Raw UART contains interrupted dumps and is preserved separately; canonical CSV is the first complete block without repaired records.",
+    "The waveform PNG is rendered from recorded SR samples and is not a new hardware acquisition or a PulseView screenshot."
+  ],
+  "artifacts_sha256": {
+    "capture_O2.sr": "74cb872f8add7dccea6f54a500ba9ef89d7539ea2ca7dda1009d834bd91f62ca",
+    "correlation_O2.json": "eeffb721d78d4eb31f97dfb4e308b6bbc2129fd2b3a5719660ac0da9a697b361",
+    "disassembly_O0.txt": "e44816fb0cafc10b0c6a6ba04a84e04cf2938a4d0cd91dbba7efbde7a210d4e5",
+    "disassembly_O2.txt": "7f5f378162eac23e55dd4122010cac8d01972b903c23ec4b6cb0c3434d22042e",
+    "gantt_O0.svg": "c1120af23e85e7911b8b711de114defd73f35c996bdf53ccfaacc7edf6d41a88",
+    "gantt_O2.svg": "9e30f021f8268410371de83d3864cbb790925641dc32e285b80f44b927064849",
+    "logic_O2.png": "3bf37f1305ead362fab167e380dc5b073f85bdeeb8db1da8a1cc6f593fde8b55",
+    "trace_O0.csv": "8cb934aebda4bf5f2af1bcaf68c4e2855ac28f8f1a45c398791e8f01c79266a7",
+    "trace_O2.csv": "d768791c470ca4ddf8c10b8a902d8fd11e33d76afa89f7cc16e3ed917bfb8f57",
+    "uart_O2_raw.txt": "30769dc84ca584bb6f583d19f54d8679dfc94bd766b54bb4b34929ee8d1453ad",
+    ".gitattributes": "032db2f5ec754dcd427378b08056cb2b6471eac5fe292bfbf03f0cff5803676b"
+  },
+  "completion": {
+    "status": "DONE for W1E2 measured task set",
+    "api_scope": "platform week1 week2 week3 week4",
+    "api_checked_files": 53,
+    "build_O0": "PASS",
+    "build_O2": "PASS",
+    "jitter_O2": "PASS",
+    "correlation_first_edge": "PASS",
+    "oral_defense": "mentor assessment, not inferred from tests"
+  },
+  "source_hash_definition": "SHA256 of Git blob bytes at recorded_source_commit",
+  "artifact_hash_definition": "SHA256 of canonical stored bytes; text uses LF, raw UART/SR/PNG are -text in .gitattributes"
+}

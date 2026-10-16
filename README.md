@@ -99,7 +99,7 @@ Script kiểm tra CMSIS-OS, HAL/LL, dấu vết code sinh tự động, Makefile
 | Tuần | Bài | Chủ đề |
 |---|---|---|
 | **1** | ex1 | Bring-up bare-metal: linker, startup, clock 72 MHz, CMake – tất cả viết tay |
-| | ex2 | Tracer tự viết (trace hook + DWT) và đo thời gian context switch |
+| | ex2 | Tracer tự viết (trace hook + DWT) và đo thời gian context switch — [DONE](week1/ex2/REPORT.md) |
 | | ex3 | Phân tích lập lịch: Liu–Layland, Response Time Analysis, so với WCRT đo được |
 | | ex4 | Phân mảnh heap, chuyển sang 100% cấp phát tĩnh, ngân sách RAM khớp file `.map` |
 | **2** | ex1 | Driver I2C bằng ngắt, timeout, bus recovery, xử lý errata |

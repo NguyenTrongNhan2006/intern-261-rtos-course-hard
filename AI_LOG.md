@@ -102,3 +102,26 @@ Theo yêu cầu thực hiện của người học, Codex chuẩn bị và tích
 Codex đã trực tiếp mở COM19, nạp/verify/reset qua OpenOCD, thu và phân tích V2 O0/O2. Hai bản đều Verified OK, đủ 205 JOB2, calibration đạt giới hạn đã dự đoán, zero observed miss. Lần nạp thử đầu không DONE do direct handler assertion; đã sửa indirect routing theo port và thêm assert vector riêng. Có counter SysTick/PendSV riêng, residual được báo trung thực; chưa có LA V2. Host/parser/vector checks PASS, không thay số đo V1 bằng V2 và không push remote.
 
 Người học đã thu thêm LA V2 O0/O2; Codex đối chiếu đủ 254 event mỗi bản. Max mismatch căn cạnh đầu O0 = 9.305556 us, O2 = 7.500000 us ở 1 MHz, 10 triệu samples. Giữ session V1/V2 riêng, không drop event hoặc fit clock scale.
+
+
+## W1E2 – Đo lại và hoàn thiện ngày 16/10/2026
+
+Người học trực tiếp chạy preset w1e2-o0/o2, nạp board và thu lại UART,
+PulseView. Codex kiểm tra các file trong measure_20261016_075333 và
+chọn capture O2 nguyên vẹn đầu tiên từ log có 13 header: 6 đủ, 7 bị ngắt.
+Giữ nguyên UART thô; không ghép dòng hoặc sửa timestamp để ép khớp.
+Một template 254-event khớp 12 cụm GPIO đủ, không có ID để gán định
+danh từng lần RESET giữa hai thiết bị.
+
+Số đo mới: O0 min/max 438/508, mean 472,841, jitter 70 cycles;
+O2 min/max 219/244, mean 232,206, jitter 25 cycles. Max correlation
+căn cạnh đầu 1,708333 µs, PendSV mean-fit residual max 0,795619 µs.
+Hai build kiểm tra lại thành công, API checker full scope PASS 53 files.
+
+Codex cập nhật REPORT/DONE, tạo waveform PNG từ samples SR thật
+(có ghi rõ không phải screenshot), xuất disassembly từ ELF đúng preset,
+ghi SHA256/provenance, dọn artifact baseline trùng/cũ và file bố cục PVS.
+Không sửa firmware trong bước hoàn thiện nên không làm thay đổi timing
+vừa đo. Bộ tests/w1e2 đã được người học yêu cầu xóa, không còn link/lệnh
+chạy bộ test đó trong báo cáo cuối. Baseline vẫn có trong lịch sử Git.
+Không chỉnh sửa dữ liệu hoặc file tạm của W1E3.
