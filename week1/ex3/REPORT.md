@@ -13,7 +13,9 @@ commit prediction W1E3 trước khi chạy. Không ghi nhận một commit sau p
 thành commit prediction trước phép đo. Cần bổ sung nội dung vào repo và giữ
 đúng trình tự thời gian này trong báo cáo.
 
-Firmware commit và bản lưu ELF/map đúng hai lần đo: [CẦN BỔ SUNG].
+Source V1 được checkpoint tại a624a01 sau các phép đo; ELF/map gốc đã
+được backup. SHA256 nằm trong BASELINE_V1_MANIFEST.json. Không gọi commit
+sau phép đo là commit prediction trước phép đo.
 
 ## 2. Mô hình lý thuyết
 
@@ -127,7 +129,8 @@ Maximum overshoot của selected-time budget theo us:
 Các maximum overshoot không nhất thiết xảy ra trong chính job gây WCRT.
 Selected-time loại thời gian task khác chạy, vẫn gồm một phần ISR và
 exception; các số này không tự chứng minh exclusive CPU cost đúng C.
-Hiệu chỉnh C và đo residual riêng: [CẦN BỔ SUNG].
+V1 chưa hiệu chỉnh exclusive C hoặc tách ISR. V2 khắc phục cách tạo
+workload và bổ sung profiling ở mục 9; không áp kết quả V2 ngược cho V1.
 
 ### 6.1. Tổng budget của các job trong response window
 
@@ -218,9 +221,8 @@ API checker sau tích hợp: PASS (16 files), phạm vi platform, week1/ex3,
 week1/ex2/tracer.c và CMakeLists.txt gốc. Dùng chính checker của repo,
 chuẩn hóa newline ở bản script chạy tạm và gán Python 3 runtime.
 Đây là policy scan, không thay thế bằng chứng build/flash/phần cứng.
-Mục AI_LOG W1E3 đã được chuẩn bị trong deliverables/W1E3_code/AI_LOG_ENTRY.md,
-chưa được thêm vào AI_LOG.md của repo. Giữ nguyên hai CSV, ELF và map đã
-dùng cho từng phép đo.
+AI_LOG.md đã được bổ sung phạm vi hỗ trợ W1E3 và V2. Giữ nguyên hai CSV,
+ELF và map đã dùng cho từng phép đo.
 
 ## 8. Trade-off
 
@@ -230,3 +232,121 @@ và cho kết luận chính xác trong mô hình task phù hợp. Với bộ nà
 LL và cả bốn RTA đều dưới deadline nên hai cách cùng kết luận đạt trên giấy.
 Số đo không miss trong 205 job hỗ trợ kết luận ở cấu hình và khoảng đo này,
 không thay thế việc mô hình hóa overhead/jitter/blocking của hệ thống thực.
+
+## 9. V2: workload đã hiệu chỉnh và IRQ profiling trên STM32
+
+Các bảng mục 1 đến 8 là baseline V1, được giữ nguyên để so sánh. Source V1
+được checkpoint tại a624a01; ELF/map và dữ liệu gốc có SHA256 trong
+BASELINE_V1_MANIFEST.json. Prediction V2 commit 59a16a7 trước mọi lần
+nạp V2. Prediction này đã biết kết quả V1, không phải dự đoán mù.
+
+V2 chạy đủ vòng SUBS/BNE cố định đã hiệu chỉnh DWT trước scheduler, khi
+IRQ tắt. Preemption không làm giảm số vòng cần thực hiện. Cùng hàm đo
+và cùng assembly workload dùng cho calibration và lúc scheduler chạy.
+Mỗi C được kiểm tra 8 mẫu uncontended; đây là calibration thực nghiệm,
+không là proof WCET tuyệt đối khi fetch phase thay đổi sau preemption.
+
+SysTick/PendSV được đo bằng wrapper riêng của W1E3, không sửa kernel.
+Theo chỉ dẫn indirect routing trong ARM_CM3 port, configCHECK_HANDLER_INSTALLATION
+bằng 0; main thay bằng assert địa chỉ SVC/PendSV/SysTick trên vector table.
+PendSV wrapper giữ EXC_RETURN trên MSP và bảo toàn r4-r11 của task mới.
+
+### 9.1. Build, test và thực thi
+
+Build thật trên repo: O0/O2, CMake + Ninja, Arm GNU GCC 14.2.1,
+-Wall -Wextra -Werror. O0 Flash 14212 B, RAM 17500 B; O2 Flash 8808 B,
+RAM 17504 B. Linker kiểm tra còn vùng MSP dự trù 1 KiB. Heap còn 3056 B
+ở cả hai capture; đây không phải stack high-water mark.
+
+Host harness compile source rta_measure.c thật với fake DWT/UART/kernel:
+PASS calibration/search, clipping phần SysTick sau release, counter,
+fixed iteration count dưới IRQ mô phỏng và framing đủ 205 JOB2.
+Parser tests PASS các trường hợp đủ job, mất job, CAL lặp, CAL dưới budget,
+log chưa DONE và counter IRQ sai. ELF checks PASS vector/call structure
+cho hai bản. Host/ELF checks không giả lập toàn bộ exception semantics.
+
+Cả hai bản đã nạp bằng OpenOCD/ST-Link với Verified OK, tự reset và thu
+qua COM19, 115200 8N1. Log flash và UART có tên flash_v2_O0/O2.txt và
+trace_v2_O0/O2.csv. Mỗi capture đủ 205 job, chung timestamp cho release
+cùng tick, không có deadline miss trong tập đã quan sát. Flash thử đầu
+của O2 verify được nhưng không DONE vì direct handler assertion; log
+attempt1 giữ riêng và không được tính là capture đo hợp lệ.
+
+### 9.2. Calibration DWT
+
+| Task | C mục tiêu (us) | O0 min=max (cycles) | O0 lệch C (us) | O2 min=max (cycles) | O2 lệch C (us) |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| tau0 | 9909 | 713450 | 0.027778 | 713453 | 0.069444 |
+| tau1 | 10062 | 724466 | 0.027778 | 724469 | 0.069444 |
+| tau2 | 31486 | 2266994 | 0.027778 | 2266997 | 0.069444 |
+| tau3 | 74591 | 5370554 | 0.027778 | 5370557 | 0.069444 |
+
+Tất cả 8 mẫu mỗi task đạt target <= C_cal <= target + 1 us.
+Runtime work wall time vẫn chứa preemption; không dùng nó làm CPU cost.
+IRQ không thể rút ngắn công việc vì điều kiện kết thúc là số vòng cố định.
+
+### 9.3. WCRT V2
+
+| Task | RTA danh định (ms) | WCRT O0 (ms) | WCRT O2 (ms) | Số job mỗi bản | Misses O0/O2 |
+| :--- | ---: | ---: | ---: | ---: | :--- |
+| tau0 | 9.909000 | 10.064958 | 10.008889 | 100 | 0/0 |
+| tau1 | 19.971000 | 20.284125 | 20.172389 | 60 | 0/0 |
+| tau2 | 51.457000 | 52.221819 | 51.944458 | 30 | 0/0 |
+| tau3 | 155.928000 | 158.209444 | 157.401444 | 15 | 0/0 |
+
+V2 timestamp release trực tiếp trong tick hook sau cập nhật kernel tick,
+khác release cycle-grid danh định của V1. Vì vậy chênh V1/V2 không chỉ do
+optimization mà còn do workload, profiler và định nghĩa mốc đo được làm rõ.
+
+O0: sai lệch actual release so với epoch+k*T nằm trong -9.583333..0.361111 us.
+
+O2: sai lệch actual release so với epoch+k*T nằm trong -3.208333..0.000000 us.
+
+### 9.4. Phân tích sai lệch từ counter đo trong từng response window
+
+| Bản | Task | Delta R (us) | SysTick bracket (us) | PendSV bracket (us) | Residual sau C_cal/IRQ (us) |
+| :--- | :--- | ---: | ---: | ---: | ---: |
+| O0 | tau0 | 155.958333 | 103.430556 | 15.430556 | 37.069444 |
+| O0 | tau1 | 313.125000 | 197.319444 | 32.208333 | 83.541667 |
+| O0 | tau2 | 764.819444 | 501.916667 | 66.680556 | 196.138889 |
+| O0 | tau3 | 2281.444444 | 1513.069444 | 187.708333 | 580.472222 |
+| O2 | tau0 | 99.888889 | 72.041667 | 8.791667 | 18.986111 |
+| O2 | tau1 | 201.388889 | 139.125000 | 18.069444 | 44.055556 |
+| O2 | tau2 | 487.458333 | 348.888889 | 37.111111 | 101.250000 |
+| O2 | tau3 | 1473.444444 | 1066.541667 | 103.819444 | 302.597222 |
+
+Residual đã trừ tổng C_cal của các job đầy đủ góp phần trong cửa sổ, không
+chỉ C của riêng task thấp. Analyzer kiểm tra không có carry-in trước khi
+áp phép trừ này. Với tau3, counts là (3,2,1,1), đúng lịch RTA.
+
+O0, tau3: 2281.444444 = 1513.069444 (SysTick) + 187.708333 (PendSV) + 0.194444 (C_cal - C danh định) + 580.472222 (residual), đơn vị us. Response window có 159 SysTick segment và 11 PendSV.
+
+O2, tau3: 1473.444444 = 1066.541667 (SysTick) + 103.819444 (PendSV) + 0.486111 (C_cal - C danh định) + 302.597222 (residual), đơn vị us. Response window có 158 SysTick segment và 11 PendSV.
+
+PendSV bracket đã gồm trace hook, scheduler và software save/restore;
+không cộng OUT->IN thêm lần nữa. SysTick là nguồn overhead lớn trong
+phép đo V2. Residual gồm thời gian ngoài bracket và ngoài workload được
+hiệu chỉnh: hardware exception entry/exit, tail chaining, mép wrapper,
+code đầu/cuối job và biến thiên timing chưa phân tách. Không gán toàn bộ
+residual cho một ISR và không gọi đây là phân rã tuyệt đối từng cycle.
+
+Empty enter/exit probe O0: 70..70 cycles. Đây chỉ là phần bracket rỗng, chưa phải tổng chi phí observer, không tự trừ khỏi mọi IRQ.
+
+Empty enter/exit probe O2: 24..25 cycles. Đây chỉ là phần bracket rỗng, chưa phải tổng chi phí observer, không tự trừ khỏi mọi IRQ.
+
+Kết luận có bằng chứng: C đã được hiệu chỉnh uncontended bằng DWT, công
+việc không bị cắt ngắn bởi preemption, và contribution SysTick/PendSV trong
+response window đã được đo riêng. RTA và các capture V2 đều không miss
+deadline với bộ tham số này. Số đo là maximum hữu hạn, profiler có observer
+effect; chưa chứng minh WCRT tuyệt đối hoặc oscillator/timebase calibrated.
+
+### 9.5. Tái lập và phạm vi bằng chứng
+
+Xem V2_GUIDE.md và tests/w1e3/README.md. Analyzer V2 dùng JOB2; parser JOB
+của V1 không áp cho format mới. Kết quả JSON giữ cycle gốc để tái tính.
+Gantt V2 chỉ bao phủ cửa sổ scheduler ring 254 event; JOB2 đủ 205 job.
+Capture LA ở mục 7 thuộc V1. Chưa thu session LA cho V2; không đổi tên dữ
+liệu V1 thành bằng chứng firmware V2. Đây là giới hạn còn được ghi rõ.
+
+SHA256 ELF/source/log tại thời điểm hoàn tất được lưu trong V2_MANIFEST.json.
+Không push lên remote trong bước này.

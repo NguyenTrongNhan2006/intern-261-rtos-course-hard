@@ -162,6 +162,7 @@ add_executable(w1e3
     week1/ex3/main.c
     week1/ex3/rta_app.c
     week1/ex3/rta_measure.c
+    week1/ex3/rta_irq.S
     third_party/FreeRTOS-Kernel/tasks.c
     third_party/FreeRTOS-Kernel/list.c
     third_party/FreeRTOS-Kernel/queue.c
@@ -184,6 +185,7 @@ target_link_options(w1e3 PRIVATE
     -nostartfiles
     "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w1e3.map"
     -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
 )
 if(OPENOCD_EXECUTABLE)
     add_custom_target(w1e3_flash

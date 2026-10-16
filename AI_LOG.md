@@ -94,3 +94,9 @@ Selected-time accounting còn chứa một phần ISR/exception, cần hiệu ch
 và định lượng phần overhead chưa bao phủ bởi OUT->IN. Số đo W1E2 baseline
 không thay thế số đo mới. WCRT quan sát hữu hạn không phải proof worst case
 tuyệt đối; đối chiếu LA/UART ở các lượt reset riêng không hiệu chuẩn clock.
+
+## W1E3 V2: workload hiệu chỉnh và IRQ profiling
+
+Theo yêu cầu thực hiện của người học, Codex chuẩn bị và tích hợp fixed iteration workload, calibration DWT, wrapper ARM_CM3 riêng W1E3, JOB2 parser và prediction trước phép đo mới. Không sửa kernel. Đã giữ checkpoint nguồn và SHA256/ELF/map/CSV/session của V1; không đụng các deletion đang stage trong tests/w1e2. Các số V1 không áp cho firmware V2.
+
+Codex đã trực tiếp mở COM19, nạp/verify/reset qua OpenOCD, thu và phân tích V2 O0/O2. Hai bản đều Verified OK, đủ 205 JOB2, calibration đạt giới hạn đã dự đoán, zero observed miss. Lần nạp thử đầu không DONE do direct handler assertion; đã sửa indirect routing theo port và thêm assert vector riêng. Có counter SysTick/PendSV riêng, residual được báo trung thực; chưa có LA V2. Host/parser/vector checks PASS, không thay số đo V1 bằng V2 và không push remote.

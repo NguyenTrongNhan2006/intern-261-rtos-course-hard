@@ -8,6 +8,9 @@
 #define configUSE_PREEMPTION                       1
 #define configUSE_TIME_SLICING                     1
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION    0
+/* The vector points to a profiling wrapper, which calls the native port.
+ * main checks these indirect routes explicitly before starting the kernel. */
+#define configCHECK_HANDLER_INSTALLATION           0
 
 #define configCPU_CLOCK_HZ                        (SystemCoreClock)
 #define configTICK_RATE_HZ                        1000u
@@ -51,8 +54,8 @@
 
 /* Handler names used by the vector table. */
 #define vPortSVCHandler      SVC_Handler
-#define xPortPendSVHandler   PendSV_Handler
-#define xPortSysTickHandler  SysTick_Handler
+#define xPortPendSVHandler   rta_port_pendsv_handler
+#define xPortSysTickHandler  rta_port_systick_handler
 
 /* Task delay APIs. */
 #define INCLUDE_vTaskDelay       1

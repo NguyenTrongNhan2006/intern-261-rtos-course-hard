@@ -1,0 +1,153 @@
+{
+  "version": 2,
+  "cycle_hz": 72000000,
+  "hyperperiod_ms": 1200,
+  "jobs": 205,
+  "calibration": {
+    "1": {
+      "target": 713448,
+      "iterations": 118906,
+      "minimum": 713450,
+      "maximum": 713450
+    },
+    "2": {
+      "target": 724464,
+      "iterations": 120742,
+      "minimum": 724466,
+      "maximum": 724466
+    },
+    "3": {
+      "target": 2266992,
+      "iterations": 377830,
+      "minimum": 2266994,
+      "maximum": 2266994
+    },
+    "4": {
+      "target": 5370552,
+      "iterations": 895090,
+      "minimum": 5370554,
+      "maximum": 5370554
+    }
+  },
+  "irq": {
+    "0": {
+      "count": 5970,
+      "minimum": 392,
+      "maximum": 2025,
+      "total": 4108564
+    },
+    "1": {
+      "count": 349,
+      "minimum": 482,
+      "maximum": 1334,
+      "total": 280873
+    }
+  },
+  "irq_probe_cycles": [
+    70,
+    70
+  ],
+  "heap_bytes": [
+    3056,
+    3056
+  ],
+  "release_grid_error_cycles": [
+    -690,
+    26
+  ],
+  "tasks": [
+    {
+      "tag": 1,
+      "jobs": 100,
+      "rta_cycles": 713448,
+      "calibrated_max_rta_cycles": 713450,
+      "wcrt_cycles": 724677,
+      "delta_cycles": 11229,
+      "worst_sequence": 20,
+      "misses": 0,
+      "tick_cycles": 7447,
+      "pendsv_cycles": 1111,
+      "tick_count": 11,
+      "pendsv_count": 1,
+      "resumes": 0,
+      "complete_work_counts": [
+        1,
+        0,
+        0,
+        0
+      ],
+      "residual_low_cycles": 2669,
+      "residual_high_cycles": 2669
+    },
+    {
+      "tag": 2,
+      "jobs": 60,
+      "rta_cycles": 1437912,
+      "calibrated_max_rta_cycles": 1437916,
+      "wcrt_cycles": 1460457,
+      "delta_cycles": 22545,
+      "worst_sequence": 12,
+      "misses": 0,
+      "tick_cycles": 14207,
+      "pendsv_cycles": 2319,
+      "tick_count": 21,
+      "pendsv_count": 2,
+      "resumes": 0,
+      "complete_work_counts": [
+        1,
+        1,
+        0,
+        0
+      ],
+      "residual_low_cycles": 6015,
+      "residual_high_cycles": 6015
+    },
+    {
+      "tag": 3,
+      "jobs": 30,
+      "rta_cycles": 3704904,
+      "calibrated_max_rta_cycles": 3704910,
+      "wcrt_cycles": 3759971,
+      "delta_cycles": 55067,
+      "worst_sequence": 10,
+      "misses": 0,
+      "tick_cycles": 36138,
+      "pendsv_cycles": 4801,
+      "tick_count": 53,
+      "pendsv_count": 4,
+      "resumes": 1,
+      "complete_work_counts": [
+        1,
+        1,
+        1,
+        0
+      ],
+      "residual_low_cycles": 14122,
+      "residual_high_cycles": 14122
+    },
+    {
+      "tag": 4,
+      "jobs": 15,
+      "rta_cycles": 11226816,
+      "calibrated_max_rta_cycles": 11226830,
+      "wcrt_cycles": 11391080,
+      "delta_cycles": 164264,
+      "worst_sequence": 4,
+      "misses": 0,
+      "tick_cycles": 108941,
+      "pendsv_cycles": 13515,
+      "tick_count": 159,
+      "pendsv_count": 11,
+      "resumes": 3,
+      "complete_work_counts": [
+        3,
+        2,
+        1,
+        1
+      ],
+      "residual_low_cycles": 41794,
+      "residual_high_cycles": 41794
+    }
+  ],
+  "limitations": "Calibration is isolated empirical timing. IRQ brackets omit hardware entry/exit and wrapper edges; PendSV includes tracer. Finite observed maxima."
+}

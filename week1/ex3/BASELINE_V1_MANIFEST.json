@@ -1,0 +1,26 @@
+{
+  "commit": "a624a017b95b80d1c2f2fbb1021818cf9fbef583",
+  "sha256": {
+    "CMakeLists.txt": "6123b0e6555e6b9572768842af599e5a573aea086a24b25d7c0288026f5da07d",
+    "AI_LOG.md": "5819a2a790be76f32a89e717c7132d46d1700e1533007bc3a118e5204d0662a0",
+    "week1/ex3/PREDICTION.md": "9aa7e60e7d7c033c61f1d0c129d86483da79026fdc45cf28d32fa1c895ff11ed",
+    "week1/ex3/REPORT.md": "8fb2cdaf63296d8aa40fde79bed25a82bd1123f95f46eabb7cb06c1fbfb90edc",
+    "week1/ex3/main.c": "63800721df88d18dda8f0013a3f2a07aadb87c65a1bc8a785c354a584bba23d0",
+    "week1/ex3/rta_app.c": "ec48895643c2758a88fc87d16a425f545670f7c2bd05c92b166a66e1497ae2b4",
+    "week1/ex3/rta_measure.c": "513b0d883785f9e2dbca4eb1bd63f5c3178e9780105ee234e0e9e3d7a84c1b0c",
+    "week1/ex3/include/FreeRTOSconfig.h": "925d45db0ea2db45b9bb098ffa8c4268f7e92b05c2a5d5b29306b1af080a951f",
+    "week1/ex3/include/rta_measure.h": "0a394f1993e66f6d1cf2c131ae281553c10f8fb918fd7aa98ad13e731a4051da",
+    "week1/ex3/trace_O0.csv": "406b3fc25a39a0ef757df0e05682fdb63e677f9ae1260a291f04572843922854",
+    "week1/ex3/trace_O2.csv": "a13b6c8d2b8adaf88a185a450ca4e794f3323cebf3a1707f55fc8116604f137d",
+    "week1/ex3/capture_O0.sr": "b2eef0097347a254f1ee7e0656dae88c81c7b8099e123e08086f718a09c3c082",
+    "week1/ex3/capture_O2.sr": "58a88e3c8d68a81823b0d950c147d6e85fda9f8cadba31f9f64148fb8f209d92",
+    "week1/ex3/capture_O2_first.sr": "fbafc400e8cd2b96eccc774f0f76b30954feb5d272cedb396f9080d68901513c",
+    "tools/capture_w1e3.py": "bdebba46f1a13218278a38c26e0dc302aa3b31485caa1bd8e2b21701f84c93a1",
+    "week1/ex3/include/params.h": "8ad4cfdde73721da749296ff9610c9334aec5a5650cb6c2e6f0f4eddd02a1b80",
+    "week1/ex3/PARAMS.md": "85c718f7ab69eba6d9baaf6c7c1bea65b46c186a6d2589f6fbcfd1c1a7caf9ac",
+    "build/w1e3-O0/w1e3.elf": "8e2e172a329e1eb694adf5f037a698715525362ecf87140d65a22c201fd66f04",
+    "build/w1e3-O0/w1e3.map": "a3d7eb45491fcc445af72e62ff2b1453b44c0d18f7dbbeadfd54ba5bf48eadde",
+    "build/w1e3-O2/w1e3.elf": "a850da258e945f82b1df04fbdcdf728e8f2316048f1691a9aacdf8318a22aae8",
+    "build/w1e3-O2/w1e3.map": "572319ed644d0f5849c2882401605ca8b46aefaa5992c37e05187f8727b2aa46"
+  }
+}

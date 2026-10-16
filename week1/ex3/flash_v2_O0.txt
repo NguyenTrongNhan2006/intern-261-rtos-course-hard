@@ -1,0 +1,27 @@
+[0/1] C:\Windows\system32\cmd.exe /C "cd /D "N:\Embedded Portfolio\intern-261-rtos-course-hard\build\w1e3-v2-O0" && C:\Users\Nhan\AppData\Local\Microsoft\WinGet\Packages\xpack-dev-tools.openocd-xpack_Microsoft.Winget.Source_8wekyb3d8bbwe\xpack-openocd-0.12.0-7\bin\openocd.exe -f interface/stlink.cfg -c "transport select swd" -f target/stm32f1x.cfg -c "adapter speed 100" -c "reset_config none" -c "program {N:/Embedded Portfolio/intern-261-rtos-course-hard/build/w1e3-v2-O0/w1e3.elf} verify reset exit""
+xPack Open On-Chip Debugger 0.12.0+dev-02228-ge5888bda3-dirty (2025-10-04-22:44)
+Licensed under GNU GPL v2
+For bug reports, read
+	http://openocd.org/doc/doxygen/bugs.html
+adapter speed: 100 kHz
+none separate
+Info : STLINK V2J48S7 (API v2) VID:PID 0483:3748
+Info : Target voltage: 3.218470
+Info : clock speed 100 kHz
+Info : SWD DPIDR 0x1ba01477
+Info : [stm32f1x.cpu] Cortex-M3 r1p1 processor detected
+Info : [stm32f1x.cpu] target has 6 breakpoints, 4 watchpoints
+Info : [stm32f1x.cpu] Examination succeed
+Info : [stm32f1x.cpu] starting gdb server on 3333
+Info : Listening on port 3333 for gdb connections
+[stm32f1x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x080000f4 msp: 0x20005000
+** Programming Started **
+Info : device id = 0x20036410
+Info : flash size = 64 KiB
+Warn : Adding extra erase range, 0x08003784 .. 0x080037ff
+** Programming Finished **
+** Verify Started **
+** Verified OK **
+** Resetting Target **
+shutdown command invoked

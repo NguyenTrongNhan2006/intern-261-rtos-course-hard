@@ -1,0 +1,25 @@
+{
+  "prediction_commit": "59a16a7",
+  "board_after_capture": "V2 O0",
+  "sha256": {
+    "CMakeLists.txt": "70e5a0a35e2114ac284be195c8c49f441b3053852927efe85fa312ca3ce27a55",
+    "week1/ex3/main.c": "d2a8d03a729f79fd34d04b75206b5a478226b1178f515a9096fec38285feb704",
+    "week1/ex3/rta_app.c": "d1bdfb89e4c652684f8fafd6c8fc0cf82c86f9376d26b5b6d087775c719087f2",
+    "week1/ex3/rta_measure.c": "f149fa7531fd50daa0212b211af265232986c2351135a00110ac7adc76b02aa4",
+    "week1/ex3/rta_irq.S": "1d053db99e60088de3fcbe196bba94964203f3d1a3417e1e22f864c51fc81ad9",
+    "week1/ex3/include/FreeRTOSConfig.h": "1844396752f849c0ba40e1f60b8a09a2515b681d248797cac846a5f0331af9a8",
+    "week1/ex3/include/rta_measure.h": "b7ee3825d1b095e5e306371dec795efa0586a8613e3c894a813f9c5b2b96bf37",
+    "tools/analyze_w1e3_v2.py": "39a6ee5fc30d9d79faab66bdcdd24b70c29bc52f742a4c1831b73713fc20aad8",
+    "week1/ex3/PREDICTION_V2.md": "86cf86d646ccfcccdf8242b2aafc74f45437ca317ff0364372b958a6a5559490",
+    "build/w1e3-v2-O0/w1e3.elf": "f5438e34c6784ecd1dd4e5c48979f1e5596116008ef81e42d67c76cf85f983b1",
+    "build/w1e3-v2-O0/w1e3.map": "0d88a2b634ceb86dafae5b71d8c7f639d50eaa8fee705f03de6722869d6c35a2",
+    "build/w1e3-v2-O2/w1e3.elf": "ac10e642847d86df259d81b556367dcd582161f8b269c98b2bf9b9bcc9b37de5",
+    "build/w1e3-v2-O2/w1e3.map": "be0b7b2c018f7150a35d7fbe25c6702bf319bf76c7101c173ec2a3a20187f8cb",
+    "week1/ex3/trace_v2_O0.csv": "19885627e1d656a769c1cd4741c765d51d089dcb494728faae1327b0b43794ac",
+    "week1/ex3/flash_v2_O0.txt": "003669b42a4319eddbe852b2790244e65ed7ec1e59e04ce6915de0315975edec",
+    "week1/ex3/results_v2_O0.json": "be35a1924a0595873b66740519904d62d4e635e9d525d48a8556613901b3a12d",
+    "week1/ex3/trace_v2_O2.csv": "47e1b3e8db5a85100cfbffe3a64123462246c8362f39e1ba22fa71045d574f74",
+    "week1/ex3/flash_v2_O2.txt": "e5288db2539c9983be5cb0fec9c87c0e47afa6fb01aa44d1c49a66dd1c8f8c2f",
+    "week1/ex3/results_v2_O2.json": "a0f2a92f3acce75ebfd1690632862aec81fc107b35ea19385dc04b4e2215036a"
+  }
+}
