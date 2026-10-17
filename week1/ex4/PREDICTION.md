@@ -5,8 +5,6 @@ MSSV 2452882
 Ngày làm 16/10/2026, 
 ## Dự đoán phân mảnh
 
-**Trả lời trực tiếp theo mẫu**
-
 Có phân mảnh tạm thời khi free các khối 2, 1, 0 trong lúc khối 3 vẫn còn được cấp phát
 
 Khối 3 ngăn hai vùng trống liền kề gộp lại, khi free khối 3 ở cuối vòng thì heap_4 gộp hai phía thành một vùng liên tục
@@ -216,8 +214,6 @@ Các kích thước stack phía trên là lựa chọn ban đầu, chưa đượ
 
 Dự kiến kiểm tra Idle hook khi dump UART, đường assert, timer service và toàn bộ workload trước khi giảm stack
 
-Chưa dùng số đo của W1.3 cũ để kết luận stack hoặc timing của firmware static mới
-
 Nếu thiết kế cuối thêm task, thay buffer, đổi cấu hình kernel hoặc đổi stack thì cần cập nhật dự toán trước lượt chạy tương ứng và giữ rõ lịch sử thay đổi
 
 ## Điều kiện thực hiện và xác minh
@@ -234,11 +230,13 @@ configSUPPORT_DYNAMIC_ALLOCATION = 0 là cấu hình compile-time, cần build f
 
 Tái dùng interface heap_experiment.h đã có sẵn, không tạo header trùng tên hoặc thư mục deliverables mới
 
+
 [CẦN BỔ SUNG] Firmware W1.4, build CMake + Ninja với -Wall -Wextra -Werror, map thật và kiểm tra 0 cấp phát động
 
 [CẦN BỔ SUNG] 72 dòng log heap trên board, high-water mark từng task, đối chiếu ngân sách RAM và REPORT
 
 Những bảng trong file này là dự đoán trước phép đo, không phải log STM32 hoặc kết quả kiểm chứng phần cứng
+
 
 ## Điều chỉnh thiết kế trước lượt đo stack tinh chỉnh
 
@@ -275,8 +273,6 @@ là 9028 - 2560 = 6468 byte
 MSP vẫn dành riêng 1024 byte
 
 Map và high-water mark sau tinh chỉnh [CẦN BỔ SUNG]
-
-Các con số dự kiến mới chưa phải kết quả đo sau tinh chỉnh
 
 
 [FreeRTOS memory management](https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/09-Memory-management/01-Memory-management)
