@@ -2,12 +2,7 @@ W1.4 – PREDICTION
 
 MSSV 2452882
 
-Ngày lập dự đoán 16/10/2026, trước khi hiện thực và chạy thí nghiệm W1.4 trong phiên này
-
-Không commit hoặc push theo yêu cầu của người học
-
-README yêu cầu commit prediction trước khi chạy, nên hiện chưa có bằng chứng commit cho bước này
-
+Ngày làm 16/10/2026, 
 ## Dự đoán phân mảnh
 
 **Trả lời trực tiếp theo mẫu**
@@ -283,9 +278,6 @@ Map và high-water mark sau tinh chỉnh [CẦN BỔ SUNG]
 
 Các con số dự kiến mới chưa phải kết quả đo sau tinh chỉnh
 
-## Nguồn đối chiếu
-
-[README của bài](README.md), [tham số](PARAMS.md), [interface heap](include/heap_experiment.h) và [generator](../../tools/gen_params.py)
 
 [FreeRTOS memory management](https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/09-Memory-management/01-Memory-management)
 
