@@ -285,3 +285,31 @@ Giữ nguyên log heap, baseline còn lại và ba log tuned hoàn chỉnh
 Giữ dữ liệu W1E2 và các bộ bằng chứng V1/V2 của W1E3
 
 Codex cung cấp lệnh, không trực tiếp xóa, commit hoặc push trong lượt này
+
+## W2.1 – Driver I2C1 ngắt và bộ kiểm tra trên PC (2026-10-20)
+
+Prompt của người học:
+
+> còn các bước j chèn hết 1 file i2c driver ? vẫn làm xong giải thích full
+> sửa lại ghi chú / note bài tiếng việt dễ hiểu
+> bạn push lên chưa push lên dùm mình
+
+Codex hỗ trợ xây dựng driver theo interface có sẵn, giải thích FSM, cấu hình
+thanh ghi, ISR transmit/receive, mutex static, task notification, timeout và
+bus recovery. Ban đầu người học tự gõ từng STEP; sau đó yêu cầu Codex chèn
+và hoàn thiện phần còn lại, đồng thời đổi note sang tiếng Việt.
+
+Bộ mock trong driver-checks chỉ chạy trên PC, không đưa vào firmware.
+Test được nối trực tiếp với source driver trong repo, kiểm tra 1.560 assertions
+về truyền/nhận, lỗi, biên timeout, ISR đến muộn và recovery. tools/check_api.sh
+PASS 9 file source/header thuộc week2/ex1 và driver-checks.
+
+Đã biên dịch riêng driver thành ARM object với header STM32/CMSIS/FreeRTOS
+thật, cấu hình static hiện có của W1E4 và cờ -O2 -Wall -Wextra -Werror.
+Đây chưa phải build/link firmware Ex1 hoàn chỉnh; chưa nạp, đo logic analyzer
+hay chứng minh phục hồi 11 lần trên board.
+
+PREDICTION ghi dự đoán trước phép đo phần cứng. Ex1 còn cần tích hợp vector
+table, cấu hình FreeRTOS/build và hai task client; thao tác chọn register rồi
+read phải được bảo vệ liền mạch ở lớp client. Người học cần tự giải thích
+được code và bổ sung kết quả đo thật vào REPORT.
