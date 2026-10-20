@@ -4,19 +4,6 @@ MSSV: 2452882. Báo cáo phân tích hai UART capture được người học cu
 trong phiên này: `measurements/trace_O0.csv` và `measurements/trace_O2.csv`.
 Quy đổi DWT dùng HCLK danh định 72 MHz, tương ứng 72 cycles/us.
 
-## 1. Prediction và lịch sử
-
-Bản prediction đã được soạn tại `deliverables/W1E3_code/week1/ex3/PREDICTION.md`
-trong bước chuẩn bị. Tuy nhiên khi kiểm tra sau capture O0, PREDICTION.md trong
-repo đích vẫn là template trống, HEAD là 6271a5d của W1E2. Chưa có bằng chứng
-commit prediction W1E3 trước khi chạy. Không ghi nhận một commit sau phép đo
-thành commit prediction trước phép đo. Cần bổ sung nội dung vào repo và giữ
-đúng trình tự thời gian này trong báo cáo.
-
-Source V1 được checkpoint tại a624a01 sau các phép đo; ELF/map gốc đã
-được backup. SHA256 nằm trong measurements/BASELINE_V1_MANIFEST.json. Không gọi commit
-sau phép đo là commit prediction trước phép đo.
-
 ## 2. Mô hình lý thuyết
 
 Bốn task độc lập, periodic, preemptive fixed priority RM, D = T,

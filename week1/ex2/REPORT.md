@@ -2,11 +2,6 @@
 
 - **Trạng thái: DONE — đã hoàn thành triển khai, build và đo task set của W1E2**
 - MSSV: 2452882; ngày đo lại: 16/10/2026
-- Firmware nguồn ghi nhận khi đo: `84a29299148879c755672a70f7961bcb2828e6e8`
-- Tracer đã sửa review từ commit `6271a5d`; số đo chính bên dưới là của bản đã sửa
-- PREDICTION commit trước khi chạy: `3fdd85c`, giữ nguyên nội dung dự đoán
-- Các con số baseline cũ của `d673d5f` chỉ dùng trong bảng so sánh lịch sử
-
 ## Số đo
 
 **Cấu hình**

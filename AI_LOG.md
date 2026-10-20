@@ -3,6 +3,7 @@ W1.1 – AI_LOG
 **Sinh viên:** Nguyễn Trọng Nhân  
 **MSSV:** 2452882
 
+13/10/2026
 ## Công cụ đã sử dụng
 
 - **Visual Studio Code + CMake:** biên dịch và tạo target W1.1.
@@ -94,7 +95,7 @@ và định lượng phần overhead chưa bao phủ bởi OUT->IN. Số đo W1E
 không thay thế số đo mới. WCRT quan sát hữu hạn không phải proof worst case
 tuyệt đối; đối chiếu LA/UART ở các lượt reset riêng không hiệu chuẩn clock.
 
-## W1E3 V2: workload hiệu chỉnh và IRQ profiling
+## W1E3 V2: workload hiệu chỉnh và IRQ profiling 15/10/2026
 
 Theo yêu cầu thực hiện của người học, Codex chuẩn bị và tích hợp fixed iteration workload, calibration DWT, wrapper ARM_CM3 riêng W1E3, JOB2 parser và prediction trước phép đo mới. Không sửa kernel. Đã giữ checkpoint nguồn và SHA256/ELF/map/CSV/session của V1; không đụng các deletion đang stage trong tests/w1e2. Các số V1 không áp cho firmware V2.
 
@@ -125,14 +126,6 @@ chạy bộ test đó trong báo cáo cuối. Baseline vẫn có trong lịch s�
 Không chỉnh sửa dữ liệu hoặc file tạm của W1E3.
 
 ## W1E4 – Hiện thực, đo board và tinh chỉnh stack ngày 16/10/2026
-
-Prompt tiếp nối của người học
-
-> okie tiếp tục làm và hoàn thành các bước ; lưu ý code thì gửi ra màn mình mình tự dán vào
-
-> đã thu xong kiểm tra và tiếp tục
-
-> xong rroif nha
 
 ### Phạm vi hỗ trợ của AI
 
