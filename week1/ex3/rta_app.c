@@ -11,6 +11,7 @@ static BaseType_t tag1(void *p) { (void)p; return 2; }
 static BaseType_t tag2(void *p) { (void)p; return 3; }
 static BaseType_t tag3(void *p) { (void)p; return 4; }
 static TaskHookFunction_t const tags[W1E3_NUM_TASKS] = {tag0, tag1, tag2, tag3};
+
 void vTaskPeriodic(void *p)
 {
     const uint32_t i = *(const uint32_t *)p;
