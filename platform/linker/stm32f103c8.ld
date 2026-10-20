@@ -49,7 +49,7 @@ SECTIONS
         _edata = .;
     } > RAM AT> FLASH
 
-    .bss (NOLOAD) :
+    .bss (NOLOAD) : 
     {
         . = ALIGN(4);
         _sbss = .;
