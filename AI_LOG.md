@@ -313,3 +313,22 @@ PREDICTION ghi dự đoán trước phép đo phần cứng. Ex1 còn cần tíc
 table, cấu hình FreeRTOS/build và hai task client; thao tác chọn register rồi
 read phải được bảo vệ liền mạch ở lớp client. Người học cần tự giải thích
 được code và bổ sung kết quả đo thật vào REPORT.
+
+## W2.1 – Rút gọn driver và note (2026-10-20)
+
+Prompt của người học:
+
+> tối ưu all giùm mình i2c1_driver_c nhé, chỉnh sửa các note sao cho ngắn gọn lại
+> bạn nên code + note luôn full file i2c1_driver.c hoàn chỉnh bổ sung thêm
+
+Đối chiếu bản dán và source trong repo: code tương đương, khác ghi chú.
+Codex gom FSM sự kiện theo switch, dùng chung cấu hình GPIO AF/GPIO,
+đọc byte receive, kiểm tra context gọi và deadline; gộp nhánh cleanup trùng.
+Giữ interface, thứ tự thanh ghi nhạy timing, mutex static, task notification,
+timeout và bus recovery; note tiếng Việt chỉ giữ lý do kỹ thuật cần nhớ.
+
+Kiểm tra ARM object với -O2 -Wall -Wextra -Werror: phần text giảm từ 3.656
+xuống 2.960 byte; bss giữ 112 byte với cấu hình static W1E4 dùng để kiểm tra.
+Bộ mock cũ PASS 1.560 assertions; tools/check_api.sh PASS 9 source/header.
+Đây chưa phải build/link toàn bộ firmware hay phép đo trên board.
+Lượt tối ưu này chưa commit hoặc push.
