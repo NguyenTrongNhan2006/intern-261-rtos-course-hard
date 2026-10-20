@@ -283,3 +283,53 @@ if(NOT W1E4_HEAP_STAGE)
     add_w1e4_target(w1e4_blinky 1)
     add_w1e4_target(w1e4_trace 2)
 endif()
+
+# W2E1: interrupt-driven I2C1 and two statically allocated client tasks.
+add_executable(w2e1
+    platform/startup.c
+    platform/system.c
+    platform/uart.c
+    week2/ex1/main.c
+    week2/ex1/i2c1_driver.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+set_target_properties(w2e1 PROPERTIES SUFFIX ".elf")
+
+target_include_directories(w2e1 PRIVATE
+    week2/ex1/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+
+target_compile_definitions(w2e1 PRIVATE STM32F103xB)
+
+target_link_options(w2e1 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w2e1.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w2e1_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w2e1>} verify reset exit"
+        DEPENDS w2e1
+        COMMENT "Flashing w2e1 with ST-Link"
+        VERBATIM
+        USES_TERMINAL
+    )
+endif()
