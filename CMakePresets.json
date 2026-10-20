@@ -33,6 +33,15 @@
             "cacheVariables": {
                 "CMAKE_C_FLAGS_DEBUG": "-O2 -g3"
             }
+        },
+        {
+            "name": "w2e1",
+            "inherits": "debug",
+            "displayName": "W2E1 I2C1 -O2",
+            "binaryDir": "${sourceDir}/build/w2e1",
+            "cacheVariables": {
+                "CMAKE_C_FLAGS_DEBUG": "-O2 -g3"
+            }
         }
     ],
     "buildPresets": [
@@ -52,6 +61,13 @@
             "configurePreset": "w1e2-o2",
             "targets": [
                 "w1e2"
+            ]
+        },
+        {
+            "name": "w2e1",
+            "configurePreset": "w2e1",
+            "targets": [
+                "w2e1"
             ]
         }
     ]
