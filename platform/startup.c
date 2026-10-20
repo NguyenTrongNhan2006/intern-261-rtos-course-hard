@@ -28,6 +28,8 @@ WEAK_DEFAULT_HANDLER(SVC_Handler);
 WEAK_DEFAULT_HANDLER(DebugMon_Handler);
 WEAK_DEFAULT_HANDLER(PendSV_Handler);
 WEAK_DEFAULT_HANDLER(SysTick_Handler);
+WEAK_DEFAULT_HANDLER(I2C1_EV_IRQHandler);
+WEAK_DEFAULT_HANDLER(I2C1_ER_IRQHandler);
 
 typedef void (*isr_handler_t)(void);
 
@@ -75,12 +77,14 @@ const isr_handler_t vector_table[] = {
     Default_Handler, Default_Handler, Default_Handler,
     Default_Handler,
 
-    /* IRQ 28–30: TIM2, TIM3, TIM4 */
+      /* IRQ 28–30: TIM2, TIM3, TIM4 */
     Default_Handler, Default_Handler, Default_Handler,
 
-    /* IRQ 31–34: I2C1_EV, I2C1_ER, I2C2_EV, I2C2_ER */
-    Default_Handler, Default_Handler, Default_Handler,
-    Default_Handler,
+    /* IRQ 31–34: I2C1 và I2C2 */
+    I2C1_EV_IRQHandler, // IRQ 31: sự kiện I2C1.
+    I2C1_ER_IRQHandler, // IRQ 32: lỗi I2C1.
+    Default_Handler,   // IRQ 33: I2C2_EV.
+    Default_Handler,   // IRQ 34: I2C2_ER.
 
     /* IRQ 35–39: SPI1, SPI2, USART1, USART2, USART3 */
     Default_Handler, Default_Handler, Default_Handler,
@@ -111,4 +115,5 @@ void Reset_Handler(void)
     for (;;) {
         /* main không nên trả về. */
     }
+// NO RETURN  !!!
 }
