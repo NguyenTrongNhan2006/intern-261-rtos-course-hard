@@ -20,6 +20,7 @@ static BaseType_t task_b_tag(void *argument)
     return 2;
 }
 
+// DWT cycle counter is used for busy wait
 static void busy_wait_us(uint32_t duration_us)
 {
     const uint32_t cycles =
