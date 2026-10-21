@@ -30,6 +30,8 @@ WEAK_DEFAULT_HANDLER(PendSV_Handler);
 WEAK_DEFAULT_HANDLER(SysTick_Handler);
 WEAK_DEFAULT_HANDLER(I2C1_EV_IRQHandler);
 WEAK_DEFAULT_HANDLER(I2C1_ER_IRQHandler);
+/* W2.2: Handler mặc định nếu ứng dụng chưa cung cấp ISR TIM2. */
+WEAK_DEFAULT_HANDLER(TIM2_IRQHandler);
 
 typedef void (*isr_handler_t)(void);
 
@@ -77,8 +79,10 @@ const isr_handler_t vector_table[] = {
     Default_Handler, Default_Handler, Default_Handler,
     Default_Handler,
 
-      /* IRQ 28–30: TIM2, TIM3, TIM4 */
-    Default_Handler, Default_Handler, Default_Handler,
+      /* W2.2: Nối IRQ28 với ISR producer trong ring_app.c. */
+TIM2_IRQHandler,   /* IRQ28: TIM2. */
+Default_Handler,  /* IRQ29: TIM3. */
+Default_Handler,  /* IRQ30: TIM4. */
 
     /* IRQ 31–34: I2C1 và I2C2 */
     I2C1_EV_IRQHandler, // IRQ 31: sự kiện I2C1.
