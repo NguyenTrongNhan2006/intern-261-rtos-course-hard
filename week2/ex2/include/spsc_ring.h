@@ -1,51 +1,91 @@
-/* Interface for the W2.2 SPSC lock-free ring buffer. Capacity, stress
- * count and benchmark iteration count come from params.h
- * (W2E2_RING_CAPACITY, W2E2_STRESS_COUNT, W2E2_BENCH_ITERATIONS).
- * Memory-barrier placement, the static storage array and the
- * timer-ISR producer / task consumer wiring are entirely yours to
- * implement. */
 #ifndef W2E2_SPSC_RING_H
 #define W2E2_SPSC_RING_H
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "params.h" /* W2E2_RING_CAPACITY, W2E2_STRESS_COUNT, W2E2_BENCH_ITERATIONS */
+#include "stm32f1xx.h"
+#include "params.h"
+
+#if (W2E2_RING_CAPACITY == 0u) || \
+    ((W2E2_RING_CAPACITY & (W2E2_RING_CAPACITY - 1u)) != 0u)
+#error "W2E2_RING_CAPACITY must be a power of two"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Element type pushed by the ISR producer and popped by the task
- * consumer; `seq` is the monotonically increasing sequence counter used
- * by the stress test to detect loss/duplication. */
+/* W2.2 - STEP 1: Dữ liệu tĩnh; mỗi bộ đếm chỉ có một bên ghi. */
 typedef struct {
-  uint32_t seq;
+    uint32_t seq;
 } spsc_elem_t;
 
 typedef struct {
-  spsc_elem_t storage[W2E2_RING_CAPACITY]; /* capacity from params.h, must be a power of 2 */
-  volatile uint32_t head; /* next free slot index, written only by producer */
-  volatile uint32_t tail; /* next readable slot index, written only by consumer */
+    spsc_elem_t storage[W2E2_RING_CAPACITY];
+    volatile uint32_t head; /* Producer ghi: số phần tử đã push. */
+    volatile uint32_t tail; /* Consumer ghi: số phần tử đã pop. */
 } spsc_ring_t;
 
-/* Resets head/tail to 0. Call once before the producer ISR / consumer
- * task start running. Not safe to call concurrently with push/pop. */
 void spsc_ring_init(spsc_ring_t *ring);
-
-/* Producer side, called from ISR context only. Returns false if the ring
- * is full (overrun) instead of overwriting unread data. Must publish the
- * element's contents before publishing the new head index (DMB/DSB). */
 bool spsc_ring_push_from_isr(spsc_ring_t *ring, spsc_elem_t elem);
-
-/* Consumer side, called from task context only. Returns false if the ring
- * is empty. Must not reorder the read of storage[tail] ahead of observing
- * the producer's published head index. */
 bool spsc_ring_pop(spsc_ring_t *ring, spsc_elem_t *out);
-
-/* Number of elements currently queued (head - tail mod capacity). Safe to
- * call from either side for diagnostics; not required to be exact under
- * concurrent access, only safe (no crash, no out-of-range index). */
 uint32_t spsc_ring_count(const spsc_ring_t *ring);
+
+#ifdef W2E2_SPSC_RING_IMPLEMENTATION
+
+/* W2.2 - STEP 2: Gọi trước khi ISR và task bắt đầu dùng ring. */
+void spsc_ring_init(spsc_ring_t *ring)
+{
+    ring->head = 0u;
+    ring->tail = 0u;
+}
+
+/* W2.2 - STEP 3: ISR ghi dữ liệu trước, công bố head sau. */
+bool spsc_ring_push_from_isr(spsc_ring_t *ring, spsc_elem_t elem)
+{
+    const uint32_t head = ring->head;
+    const uint32_t tail = ring->tail;
+
+    if ((uint32_t)(head - tail) == W2E2_RING_CAPACITY) {
+        return false;
+    }
+
+    __DMB(); /* Quan sát tail trước khi tái sử dụng slot. */
+    ring->storage[head & (W2E2_RING_CAPACITY - 1u)] = elem;
+    __DMB(); /* Ghi xong payload trước khi công bố head. */
+    ring->head = head + 1u;
+
+    return true;
+}
+
+/* W2.2 - STEP 4: Task đọc dữ liệu trước, trả slot qua tail sau. */
+bool spsc_ring_pop(spsc_ring_t *ring, spsc_elem_t *out)
+{
+    const uint32_t tail = ring->tail;
+    const uint32_t head = ring->head;
+
+    if (tail == head) {
+        return false;
+    }
+
+    __DMB(); /* Quan sát head trước khi đọc payload. */
+    *out = ring->storage[tail & (W2E2_RING_CAPACITY - 1u)];
+    __DMB(); /* Đọc xong payload trước khi trả slot. */
+    ring->tail = tail + 1u;
+
+    return true;
+}
+
+/* W2.2 - STEP 5: Snapshot chẩn đoán từ producer hoặc consumer. */
+uint32_t spsc_ring_count(const spsc_ring_t *ring)
+{
+    const uint32_t head = ring->head;
+    const uint32_t tail = ring->tail;
+
+    return (uint32_t)(head - tail);
+}
+
+#endif /* W2E2_SPSC_RING_IMPLEMENTATION */
 
 #ifdef __cplusplus
 }
