@@ -333,3 +333,54 @@ if(OPENOCD_EXECUTABLE)
         USES_TERMINAL
     )
 endif()
+
+# W2.2: SPSC ring buffer, stress test va DWT benchmark voi Queue.
+add_executable(w2e2
+    platform/startup.c
+    platform/system.c
+    platform/uart.c
+    week2/ex2/ring_app.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+set_target_properties(w2e2 PROPERTIES SUFFIX ".elf")
+
+target_include_directories(w2e2 PRIVATE
+    week2/ex2/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+
+target_compile_definitions(w2e2 PRIVATE STM32F103xB)
+# W2.2: Toi uu cung muc -O2 cho ung dung va FreeRTOS khi benchmark.
+target_compile_options(w2e2 PRIVATE -O2)
+
+target_link_options(w2e2 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w2e2.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w2e2_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w2e2>} verify reset exit"
+        DEPENDS w2e2
+        COMMENT "Flashing w2e2 with ST-Link"
+        VERBATIM
+        USES_TERMINAL
+    )
+endif()
