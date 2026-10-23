@@ -1,7 +1,6 @@
 # W1.2 – PREDICTION (điền TRƯỚC khi chạy, commit trước)
 
-- MSSV: 2452882.
-- Các số bên dưới là ước lượng trước thí nghiệm, không phải số đo hoặc cam kết đạt rubric.
+- MSSV: 2452882. Nguyễn Trọng Nhân
 
 ## Giả định và phạm vi phép đo
 
