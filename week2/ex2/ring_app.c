@@ -54,7 +54,7 @@ static inline uint32_t cycle_now(void)
     return value;
 }
 
-static uint32_t measure_overhead(void)
+static uint32_t measure_overhead(void) 
 {
     uint32_t best = UINT32_MAX;
 
