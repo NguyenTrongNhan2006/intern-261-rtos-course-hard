@@ -78,7 +78,7 @@ void tracer_init(void)
     tracer_state.recording = 1u;
 }
 
-static void tracer_stop(void)
+void tracer_stop(void)
 {
     const uint32_t saved_primask = __get_PRIMASK();
 
