@@ -384,3 +384,61 @@ if(OPENOCD_EXECUTABLE)
         USES_TERMINAL
     )
 endif()
+
+# Ung dung priority inversion, chained blocking va ceiling.
+add_executable(w2e3
+    platform/startup.c
+    platform/system.c
+    platform/gpio.c
+    platform/uart.c
+    week1/ex2/tracer.c
+    week2/ex3/blocking_app.c
+    week2/ex3/priority_ceiling.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+set_target_properties(w2e3 PROPERTIES SUFFIX ".elf")
+
+target_include_directories(w2e3 PRIVATE
+    week2/ex3/include
+    week1/ex2/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+
+target_compile_definitions(w2e3 PRIVATE
+    STM32F103xB
+    TRACER_FIRST_PIN=4u
+    TRACER_LAST_PIN=8u
+)
+
+target_compile_options(w2e3 PRIVATE -O2)
+
+target_link_options(w2e3 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w2e3.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w2e3_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w2e3>} verify reset exit"
+        DEPENDS w2e3
+        VERBATIM
+        USES_TERMINAL
+    )
+endif()
