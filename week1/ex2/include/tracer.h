@@ -25,6 +25,9 @@ void tracer_init(void);
 void tracer_on_switched_in(void);
 void tracer_on_switched_out(void);
 
+/* Dừng ghi trước khi xuất log. */
+void tracer_stop(void);
+
 /* Dumps the ring buffer over UART1 as the text/binary framing you define
  * (document the format for tools/trace_gantt.py in REPORT.md). Returns the
  * number of records dumped. */
