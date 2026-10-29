@@ -5,6 +5,10 @@
 #include "stm32f1xx.h"
 #include "params.h"
 
+#ifndef W2E1_TRACE_EV
+#define W2E1_TRACE_EV 0 // 1: PB13 = ISR EV, PB14 = ISR ER cho logic analyzer.
+#endif
+
 #define I2C1_IRQ_MASK \
     (I2C_CR2_ITEVTEN | I2C_CR2_ITBUFEN | I2C_CR2_ITERREN)
 #define I2C1_ERROR_MASK \
@@ -51,6 +55,7 @@ typedef struct {
 static volatile i2c1_context_t s_i2c1;
 static StaticSemaphore_t s_mutex_storage;
 static SemaphoreHandle_t s_bus_mutex;
+static uint32_t s_recovery_pulse_count; // Số xung SCL của lần recovery gần nhất; ghi khi giữ mutex bus.
 
 /* STEP 2: Chờ FreeRTOS dùng tick; chờ thanh ghi dùng cycle của DWT.
  * Chỉ cho gọi API blocking sau init, ngoài ISR và ngoài vùng khóa ngắt.
@@ -154,6 +159,12 @@ void i2c1_driver_init(void)
     configASSERT(s_bus_mutex != NULL);
 
     i2c1_gpio_configure(true);
+#if W2E1_TRACE_EV
+    GPIOB->BRR = GPIO_BRR_BR13 | GPIO_BRR_BR14;
+    GPIOB->CRH = (GPIOB->CRH & ~(GPIO_CRH_MODE13 | GPIO_CRH_CNF13 |
+                                 GPIO_CRH_MODE14 | GPIO_CRH_CNF14)) |
+                 GPIO_CRH_MODE13_1 | GPIO_CRH_MODE14_1; // Push-pull 2 MHz.
+#endif
     i2c1_hw_configure();
     configASSERT((AFIO->MAPR & AFIO_MAPR_I2C1_REMAP) == 0u);
 
@@ -220,6 +231,7 @@ static bool i2c1_wait_scl_high(uint32_t start, uint32_t timeout)
 static bool i2c1_recovery_pulses(uint32_t start, uint32_t timeout)
 {
     GPIOB->BSRR = GPIO_BSRR_BS6 | GPIO_BSRR_BS7;
+    s_recovery_pulse_count = 0u;
     for (uint32_t pulse = 0u; pulse < 9u; ++pulse) {
         if (!i2c1_wait_scl_high(start, timeout)) {
             return false;
@@ -228,6 +240,7 @@ static bool i2c1_recovery_pulses(uint32_t start, uint32_t timeout)
             return true;
         }
         GPIOB->BRR = GPIO_BRR_BR6;
+        ++s_recovery_pulse_count;
         i2c1_delay_us(5u);
         GPIOB->BSRR = GPIO_BSRR_BS6;
         if (!i2c1_wait_scl_high(start, timeout)) {
@@ -309,6 +322,11 @@ bool i2c1_bus_recover(void)
     const BaseType_t released = xSemaphoreGive(s_bus_mutex);
     configASSERT(released == pdTRUE);
     return recovered && released == pdTRUE;
+}
+
+uint32_t i2c1_last_recovery_pulses(void)
+{
+    return s_recovery_pulse_count;
 }
 
 /* STEP 14: Tắt nguồn ngắt, lưu kết quả rồi notify đúng task owner một lần.
@@ -558,9 +576,8 @@ static i2c1_status_t i2c1_transfer(uint8_t addr7, const uint8_t *tx_data,
     if ((errors & I2C_SR1_ARLO) != 0u) {
         /* Mất quyền Master: không ép STOP hoặc tạo xung GPIO. */
         (void)i2c1_wait_bus_free();
-        i2c1_hw_configure();
-        I2C1->CR1 = I2C_CR1_PE;
-        result = I2C1_ERR_BUS;
+        /* Hệ một Master: ARLO do nhiễu SDA; chờ bus xong rồi recovery để đồng bộ lại slave. */
+        result = i2c1_recover_locked() ? I2C1_ERR_RECOVERED : I2C1_ERR_BUS;
     } else if (result == I2C1_ERR_TIMEOUT || result == I2C1_ERR_BUS ||
                !i2c1_wait_bus_free()) {
         result = i2c1_recover_locked() ? I2C1_ERR_RECOVERED : I2C1_ERR_BUS;
@@ -592,10 +609,22 @@ i2c1_status_t i2c1_master_read(uint8_t addr7, uint8_t *data, uint16_t len)
 /* STEP 28: Vector table nối IRQ EV/ER tới hai handler để chạy FSM/báo lỗi. */
 void I2C1_EV_IRQHandler(void)
 {
+#if W2E1_TRACE_EV
+    GPIOB->BSRR = GPIO_BSRR_BS13;
+#endif
     i2c1_on_event_irq();
+#if W2E1_TRACE_EV
+    GPIOB->BRR = GPIO_BRR_BR13;
+#endif
 }
 
 void I2C1_ER_IRQHandler(void)
 {
+#if W2E1_TRACE_EV
+    GPIOB->BSRR = GPIO_BSRR_BS14;
+#endif
     i2c1_on_error_irq();
+#if W2E1_TRACE_EV
+    GPIOB->BRR = GPIO_BRR_BR14;
+#endif
 }

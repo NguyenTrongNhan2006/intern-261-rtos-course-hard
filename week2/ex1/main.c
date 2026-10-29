@@ -144,6 +144,12 @@ static void recovery_update_locked(i2c1_status_t result)
     }
 }
 
+#ifndef W2E1_FAULT_INJECT
+#define W2E1_FAULT_INJECT 0
+#endif
+
+static volatile uint32_t s_inject_count; // Số xung lỗi đã chèn; client chỉ đọc để log.
+
 /* STEP 10: In trọn một dòng khi đang giữ mutex, tránh log bị xen kẽ.
  * B0..B5 là bytes thô dạng thập phân; lỗi thì để trống các cột dữ liệu.
  */
@@ -167,6 +173,13 @@ static void log_result_locked(
             uart1_write_u32(data[i]);
         }
     }
+
+    uart1_write_char(',');
+    if (result == I2C1_ERR_RECOVERED) {
+        uart1_write_u32(i2c1_last_recovery_pulses());
+    }
+    uart1_write_char(',');
+    uart1_write_u32(s_inject_count);
 
     uart1_write_string("\r\n");
 }
@@ -222,6 +235,66 @@ static void client_task(void *argument)
     }
 }
 
+#if W2E1_FAULT_INJECT
+/* STEP 11b: (Test) PB12 open-drain nối SDA qua 220 Ω, kéo SDA LOW 30 us giữa giao dịch.
+ * Priority Idle: chỉ chạy khi client Blocked chờ ISR; xung nằm trong critical section
+ * để client không chen vào giữa lúc SDA đang bị giữ. Chỉ đọc GPIOB->IDR, không đọc
+ * thanh ghi I2C1 (đọc SR2 có thể xóa ADDR).
+ */
+#define FAULT_STACK_WORDS 128u
+#define FAULT_PERIOD_MS   1000u // Một sự cố mỗi giây, đủ cách để GYRO/ACCEL đọc OK xác nhận.
+#define FAULT_PULSE_US    30u   // Khoảng 3 bit ở 100 kHz.
+
+static StaticTask_t s_fault_tcb;
+_Alignas(8) static StackType_t s_fault_stack[FAULT_STACK_WORDS];
+static const uint16_t s_fault_offsets_us[] = {
+    20u, 60u, 120u, 250u, 400u, 550u, 700u, 850u
+};
+
+static void fault_delay_us(uint32_t us)
+{
+    const uint32_t cycles = (SystemCoreClock / 1000000u) * us;
+    const uint32_t start = DWT->CYCCNT;
+
+    while ((uint32_t)(DWT->CYCCNT - start) < cycles) {
+        __NOP();
+    }
+}
+
+static void fault_pin_init(void)
+{
+    RCC->APB2ENR |= RCC_APB2ENR_IOPBEN;
+    GPIOB->BSRR = GPIO_BSRR_BS12; // Nhả chân trước khi đổi mode.
+    GPIOB->CRH = (GPIOB->CRH & ~(GPIO_CRH_MODE12 | GPIO_CRH_CNF12)) |
+                 GPIO_CRH_MODE12_1 | GPIO_CRH_CNF12_0; // Output open-drain 2 MHz.
+}
+
+static void fault_task(void *argument)
+{
+    (void)argument;
+
+    for (;;) {
+        vTaskDelay(pdMS_TO_TICKS(FAULT_PERIOD_MS));
+
+        while ((GPIOB->IDR & GPIO_IDR_IDR6) != 0u) {
+            // Chờ SCL LOW: một client vừa START và đang Blocked chờ notification.
+        }
+
+        const uint32_t n = s_inject_count;
+        fault_delay_us(s_fault_offsets_us[n % (sizeof s_fault_offsets_us /
+                                               sizeof s_fault_offsets_us[0])]);
+
+        taskENTER_CRITICAL();
+        GPIOB->BRR = GPIO_BRR_BR12;
+        fault_delay_us(FAULT_PULSE_US);
+        GPIOB->BSRR = GPIO_BSRR_BS12;
+        taskEXIT_CRITICAL();
+
+        s_inject_count = n + 1u;
+    }
+}
+#endif
+
 /* STEP 12: Cấu hình phần cứng, tạo object/task rồi chạy scheduler. */
 int main(void)
 {
@@ -240,8 +313,10 @@ int main(void)
 
     uart1_write_string("# W2E1,100kHz,RECOVERY_TARGET=");
     uart1_write_u32(W2E1_RECOVERY_REPEAT_COUNT);
+    uart1_write_string(",FAULT_INJECT=");
+    uart1_write_u32(W2E1_FAULT_INJECT);
     uart1_write_string("\r\nCLIENT,STATUS,US,RECOVERY_STREAK,RECOVERY_PENDING,"
-                       "B0,B1,B2,B3,B4,B5\r\n");
+                       "B0,B1,B2,B3,B4,B5,PULSES,INJ\r\n");
 
     for (uint32_t i = 0u; i < CLIENT_COUNT; ++i) {
         s_client_handles[i] = xTaskCreateStatic(
@@ -255,6 +330,14 @@ int main(void)
 
         configASSERT(s_client_handles[i] != NULL);
     }
+
+#if W2E1_FAULT_INJECT
+    fault_pin_init();
+    const TaskHandle_t fault_handle = xTaskCreateStatic(
+        fault_task, "FAULT", FAULT_STACK_WORDS, NULL, tskIDLE_PRIORITY,
+        s_fault_stack, &s_fault_tcb);
+    configASSERT(fault_handle != NULL);
+#endif
 
     vTaskStartScheduler();
 

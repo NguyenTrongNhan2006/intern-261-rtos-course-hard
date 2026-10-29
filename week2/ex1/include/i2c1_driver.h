@@ -49,6 +49,9 @@ i2c1_status_t i2c1_master_read(uint8_t addr7, uint8_t *data, uint16_t len);
  * invoke it directly and count successes. */
 bool i2c1_bus_recover(void);
 
+/* Số xung SCL đã phát trong lần recovery gần nhất (0 nếu SDA đã HIGH sẵn); dùng cho log test. */
+uint32_t i2c1_last_recovery_pulses(void);
+
 /* Call from I2C1_EV_IRQHandler() / I2C1_ER_IRQHandler(): drive the EV5..EV8
  * state machine (or record the error flags) and xTaskNotifyFromISR() the
  * task blocked in i2c1_master_write/read. */
