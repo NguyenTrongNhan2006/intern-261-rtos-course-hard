@@ -54,8 +54,3 @@ Mỗi `RECOVERED` đều được một dòng `OK` kế tiếp xác nhận mới
 Khi ngoại vi I2C bị kẹt, tiếp tục yêu cầu START không bảo đảm tạo được chuỗi clock cần thiết. Driver tắt I2C, chuyển PB6/PB7 sang GPIO open-drain để điều khiển SCL thủ công, đọc IDR để xác nhận chân thực sự lên HIGH. Sau khi SDA nhả, driver tạo START/STOP rồi trả chân về AF và cấu hình lại I2C.
 
 STOP là chuyển SDA từ LOW lên HIGH khi SCL HIGH, giúp slave kết thúc trạng thái giao tiếp. Nếu bỏ STOP, slave có thể còn chờ phần còn lại của giao dịch khiến lần sau lỗi hoặc BUSY chưa được giải phóng. Đây là lập luận thiết kế, chưa làm phép thử bỏ STOP.
-
-## Chưa làm
-- Chưa có ảnh chụp màn hình logic analyzer đóng gói; dữ liệu thô `.sr` mở lại bằng PulseView.
-- Chưa thử rút dây SDA bằng tay và chưa có ca `PULSES > 0`.
-- `tools/check_api.sh` chưa chạy được đúng trên máy này (thiếu python3); đã tự kiểm tra bằng grep không có API cấp phát động hay HAL/LL.
