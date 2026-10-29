@@ -308,7 +308,11 @@ target_include_directories(w2e1 PRIVATE
     third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
 )
 
-target_compile_definitions(w2e1 PRIVATE STM32F103xB)
+option(W2E1_TRACE_EV "W2E1: PB13/PB14 danh dau ISR EV/ER" OFF)
+option(W2E1_FAULT_INJECT "W2E1: PB12 keo SDA de test recovery" OFF)
+target_compile_definitions(w2e1 PRIVATE STM32F103xB
+    W2E1_TRACE_EV=$<BOOL:${W2E1_TRACE_EV}>
+    W2E1_FAULT_INJECT=$<BOOL:${W2E1_FAULT_INJECT}>)
 
 target_link_options(w2e1 PRIVATE
     "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
