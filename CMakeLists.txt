@@ -416,10 +416,14 @@ target_include_directories(w2e3 PRIVATE
     third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
 )
 
+set(W2E3_TEST_CASE 0 CACHE STRING
+    "W2E3: 0=INV 1=CHAIN 2=DEAD 3=C_INV 4=C_CHAIN 5=C_DEAD")
+
 target_compile_definitions(w2e3 PRIVATE
     STM32F103xB
     TRACER_FIRST_PIN=4u
     TRACER_LAST_PIN=8u
+    TEST_CASE=${W2E3_TEST_CASE}
 )
 
 target_compile_options(w2e3 PRIVATE -O2)

@@ -28,6 +28,7 @@
 #define INCLUDE_vTaskDelay                      1
 #define INCLUDE_xTaskDelayUntil                 1
 #define INCLUDE_vTaskSuspend                    1
+#define INCLUDE_uxTaskGetStackHighWaterMark     1
 #define configUSE_TASK_NOTIFICATIONS            0
 #define configUSE_TIMERS                        0
 

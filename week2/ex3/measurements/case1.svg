@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="160" font-family="monospace" font-size="12">
+<rect width="100%" height="100%" fill="white"/>
+<text x="5" y="36.0">0</text>
+<rect x="364.1" y="22" width="525.9" height="20" fill="#4c78a8"/>
+<text x="5" y="60.0">1</text>
+<rect x="90.4" y="46" width="7.7" height="20" fill="#f58518"/>
+<rect x="106.3" y="46" width="144.7" height="20" fill="#f58518"/>
+<rect x="364.0" y="46" width="1.0" height="20" fill="#f58518"/>
+<text x="5" y="84.0">2</text>
+<rect x="90.3" y="70" width="1.0" height="20" fill="#54a24b"/>
+<text x="5" y="108.0">3</text>
+<rect x="90.1" y="94" width="1.0" height="20" fill="#e45756"/>
+<rect x="98.1" y="94" width="8.0" height="20" fill="#e45756"/>
+<rect x="251.3" y="94" width="112.4" height="20" fill="#e45756"/>
+<rect x="363.9" y="94" width="1.0" height="20" fill="#e45756"/>
+<text x="5" y="132.0">4</text>
+<rect x="90.0" y="118" width="1.0" height="20" fill="#72b7b2"/>
+<rect x="106.1" y="118" width="1.0" height="20" fill="#72b7b2"/>
+<rect x="251.1" y="118" width="1.0" height="20" fill="#72b7b2"/>
+<rect x="363.8" y="118" width="1.0" height="20" fill="#72b7b2"/>
+<text x="90" y="156">span = 100.01 ms</text>
+</svg>

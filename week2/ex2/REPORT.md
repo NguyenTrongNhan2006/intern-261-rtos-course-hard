@@ -1,10 +1,26 @@
-# W2.2 – REPORT
+# W2.2 – SPSC ring buffer và FreeRTOS Queue
 
-MSSV: 2452882. STM32F103C8T6 chạy 72 MHz, build -O2. Ring và Queue cùng chứa 512 phần tử, mỗi phần tử 4 byte. TIM2 phát ngắt mỗi 100 µs; một ISR producer và một task consumer. Stress test dùng 1000000 phần tử; benchmark mỗi cơ chế dùng 7048 mẫu thành công.
+MSSV **2452882**. Rà soát bằng chứng ngày **30/10/2026**.
 
-## Số đo
+## 1. Kết quả và cấu hình
 
-Log UART chép từ ảnh chụp kết quả trên board:
+**Đã đủ bằng chứng đo theo yêu cầu W2.2:** stress test nhận đúng 1,000,000 phần tử, không overrun; benchmark Ring/Queue đều hoàn thành 7,048 mẫu. Bằng chứng là ảnh UART trên board, không phải CSV thô xuất từ cổng serial.
+
+| Thành phần | Cấu hình |
+|---|---|
+| MCU / clock / optimization | STM32F103C8T6, 72 MHz, `-O2` |
+| Dữ liệu | `spsc_elem_t`: một `uint32_t seq`, 4 byte |
+| Dung lượng | Ring và Queue đều 512 phần tử, bộ nhớ static |
+| Producer / consumer | Một ISR TIM2 push/send, một task pop/receive |
+| TIM2 | Mỗi 100 µs; 10 kHz theo cấu hình timer |
+| Stress | `W2E2_STRESS_COUNT=1000000` |
+| Benchmark | `W2E2_BENCH_ITERATIONS=7048` mẫu thành công mỗi cơ chế |
+
+## 2. Bằng chứng và số đo
+
+![UART: Stress, Ring và Queue đều PASS](measurements/uart_ring_queue_pass.png)
+
+Chép từ [ảnh gốc](measurements/uart_ring_queue_pass.png):
 
 ```text
 PHASE,STATUS,PRODUCED,RECEIVED,OVERRUN,MEAN_PUSH,MEAN_POP
@@ -14,27 +30,54 @@ RING,PASS,7048,7048,0,29,24
 QUEUE,PASS,7048,7048,0,210,197
 ```
 
-Consumer đã kiểm tra seq từ 0 đến 999999: không phát hiện mất, lặp hoặc đảo thứ tự; overrun bằng 0. Ảnh hiển thị hai lượt hoàn chỉnh có cùng kết quả. NA ở lượt stress nghĩa là không xuất cycle trung bình cho lượt này.
+Ảnh hiển thị hai bộ kết quả hoàn chỉnh có cùng số liệu. Không suy từ việc lặp trên màn hình thành hai phép đo độc lập có kiểm soát; báo cáo sử dụng bộ giá trị hiển thị và ghi rõ nguồn ảnh.
 
-| Cơ chế | Cycle trung bình (push/send) | Cycle trung bình (pop/receive) | Tổng theo log (cycle/cặp) |
+| Lượt | Produced | Received | Overrun | Kiểm tra |
+|---|---:|---:|---:|---|
+| STRESS | 1,000,000 | 1,000,000 | 0 | PASS; consumer kiểm tra seq 0…999999 |
+| RING | 7,048 | 7,048 | 0 | PASS |
+| QUEUE | 7,048 | 7,048 | 0 | PASS |
+
+| Cơ chế | Push/send (cycle) | Pop/receive (cycle) | Tổng từ log (cycle/cặp) | Thời gian ở 72 MHz (µs/cặp) |
+|---|---:|---:|---:|---:|
+| SPSC ring | 29 | 24 | 53 | 0.736 |
+| FreeRTOS Queue | 210 | 197 | 407 | 5.653 |
+
+Tổng Queue/Ring khoảng **7.679 lần**; Ring dùng ít hơn khoảng **86.98% cycle/cặp** trong thiết lập này. Trung bình được firmware chia nguyên làm tròn xuống, nên 53 và 407 là tổng các giá trị hiển thị, không phải hai trung bình tổng có đầy đủ phần lẻ. `NA` ở stress nghĩa là lượt đó không xuất benchmark cycle.
+
+## 3. Cách benchmark và giới hạn
+
+DWT đo quanh `spsc_ring_push_from_isr` / `spsc_ring_pop` hoặc `xQueueSendFromISR` / `xQueueReceive`. Hiệu chỉnh phép đo rỗng là **1 cycle**. Log UART và kiểm tra seq nằm ngoài khoảng đo; `portYIELD_FROM_ISR` cũng nằm ngoài phần đo API send.
+
+Ở lượt benchmark, producer đợi consumer lấy mẫu trước rồi mới tạo mẫu mới. Queue receive dùng timeout 0; consumer không Blocked trên Queue, waiting list rỗng và không đo chi phí đánh thức task. Cả hai cơ chế dùng cùng kiểu phần tử và dung lượng, nhưng lượt này không đo throughput khi đầy queue hoặc độ trễ khi consumer blocking. Ngắt khác vẫn có thể chen vào thời gian DWT.
+
+Stress test tách khỏi lượt benchmark: producer phát sequence tăng dần, consumer đối chiếu từng giá trị. Nếu đầy hoặc sai sequence, firmware ghi lỗi và dừng; không bỏ qua phần tử đầy rồi kết luận PASS.
+
+## 4. Đối chiếu PREDICTION
+
+| Đại lượng | Dự đoán (cycle) | Đo từ ảnh (cycle) | Đo − dự đoán |
 |---|---:|---:|---:|
-| SPSC ring buffer | 29 | 24 | 53 |
-| xQueueSendFromISR / xQueueReceive | 210 | 197 | 407 |
+| Ring push | 30 | 29 | −1 |
+| Ring pop | 30 | 24 | −6 |
+| Ring một cặp | 60 | 53 | −7 (−11.67%) |
+| Queue send | 100 | 210 | +110 |
+| Queue receive | 140 | 197 | +57 |
+| Queue một cặp | 240 | 407 | +167 (+69.58%) |
 
-Các trung bình được in dưới dạng số nguyên làm tròn xuống. Tổng từ log tương ứng khoảng 0,736 µs/cặp cho ring và 5,653 µs/cặp cho Queue; tỷ lệ Queue/ring xấp xỉ 7,68. Kiểm tra tools/check_api.sh trên week2/ex1 và week2/ex2: PASS, phạm vi 9 file.
+Tỷ lệ dự đoán là 4 lần, số hiển thị cho khoảng 7.679 lần. Ring xử lý một phần tử 4 byte, mask chỉ số bằng 511 và các DMB. Queue có critical section BASEPRI, barrier của port, cập nhật trạng thái/con trỏ, copy tổng quát, kiểm tra waiting list và assert. Ring cũng copy payload nên không giải thích lợi thế bằng việc Ring không copy.
 
-## Giải thích sai lệch (ĐỊNH LƯỢNG)
+Chưa đo tách từng nhóm lệnh; phân bổ 60/60/20/100 cycle trong bản dự đoán vẫn là giả thuyết. Không thể quy chính xác +167 cycle cho một nhóm hoặc bỏ ảnh hưởng ngắt chỉ từ các trung bình trên.
 
-PREDICTION dự kiến ring 30 + 30 = 60 cycle/cặp, Queue 100 + 140 = 240 cycle/cặp và tỷ lệ 4 lần. Kết quả ring giảm 7 cycle, khoảng 11,7%; Queue tăng 167 cycle, khoảng 69,6%. Phần tăng của Queue gồm 110 cycle ở send và 57 cycle ở receive. Tỷ lệ đo được khoảng 7,68 lần lớn hơn dự đoán ban đầu.
+## 5. Vì sao SPSC an toàn và khi nào không còn đúng
 
-Ring xử lý cố định phần tử 4 byte, chỉ số vòng bằng mask 511 và các DMB. Queue có thêm critical section dùng BASEPRI, ISB/DSB của port, cập nhật trạng thái và con trỏ, memcpy theo kích thước runtime, kiểm tra waiting list và các assert. Ring cũng copy payload, nên không thể giải thích lợi thế bằng việc ring không copy. Chưa đo riêng từng nhóm lệnh; phân bổ 60/60/20/100 cycle trong PREDICTION vẫn là giả thuyết, chưa được xác nhận.
+Chỉ producer ghi `head`, chỉ consumer ghi `tail`. Load/store `uint32_t` căn chỉnh 4 byte là atomic trên Cortex-M3. Producer quan sát `tail`, dùng DMB trước khi tái sử dụng slot, ghi payload rồi DMB trước khi công bố `head`. Consumer quan sát `head`, DMB trước khi đọc payload, đọc xong rồi DMB trước khi trả slot bằng `tail`. `volatile` giúp truy cập chỉ số được thực hiện; nó không thay DMB để giữ thứ tự bàn giao.
 
-Benchmark đo quanh API bằng DWT và hiệu chỉnh phép đo rỗng 1 cycle; log UART và kiểm tra seq nằm ngoài khoảng đo. Producer chờ consumer lấy mẫu trước rồi mới tạo mẫu mới; xQueueReceive dùng thời gian chờ 0 nên waiting list rỗng, không có chi phí đánh thức task do Queue trong thiết lập này. portYIELD_FROM_ISR nằm ngoài khoảng đo API. Ngắt chen ngang vẫn có thể ảnh hưởng trung bình; kết quả không đại diện cho trường hợp consumer blocking hoặc nhiều client.
+Nếu ISR chen khi task đang đọc, consumer chưa trả slot qua `tail`, nên producer chưa được ghi đè slot đó. Mỗi thao tác có số bước hữu hạn và không cần mutex. Bộ đếm uint32_t dùng phép trừ unsigned và mask; trong mô hình SPSC, số phần tử đang giữ bị giới hạn bởi 512.
 
-## Trả lời câu hỏi trade-off
+Nếu có producer thứ hai, A có thể đọc `head=0` rồi bị B chen vào; B ghi slot 0 và công bố `head=1`, sau đó A ghi đè slot 0 rồi cũng công bố `head=1`: mất dữ liệu. DMB không phân xử quyền ghi. Payload nhiều field vẫn có thể đúng nếu producer ghi xong trước publish và consumer chưa trả slot; riêng việc payload lớn hơn một word chưa đủ kết luận SPSC sai.
 
-Chỉ producer ghi head và chỉ consumer ghi tail; load/store uint32_t căn chỉnh 4 byte là atomic trên Cortex-M3. Producer ghi payload trước khi công bố head; consumer quan sát head rồi đọc payload, hoàn tất đọc trước khi công bố tail. DMB giữ thứ tự bàn giao, còn volatile không tự thay thế barrier. Nếu ISR chen vào lúc task đang đọc, slot vẫn chưa được trả qua tail nên producer không được ghi đè. Mỗi push/pop trả về sau số bước hữu hạn, không dùng lock hay biến count bị hai bên cùng read-modify-write.
+Stress test là bằng chứng không phát hiện lỗi trong cấu hình đã chạy; lập luận an toàn còn phụ thuộc một producer, một consumer, quyền sở hữu slot và memory ordering trên Cortex-M3 đơn nhân. Không tự suy rộng sang nhiều producer/consumer, DMA hoặc SMP.
 
-Nếu thêm producer thứ hai, producer A có thể đọc head = 0 rồi bị producer B ưu tiên cao hơn chen vào. B ghi storage[0] và công bố head = 1; A tiếp tục ghi đè storage[0] rồi cũng công bố head = 1, làm mất phần tử của B. DMB không giải quyết tranh chấp quyền ghi này. Payload nhiều field vẫn có thể an toàn nếu ghi hoàn chỉnh trước publish và giữ đúng quyền sở hữu slot; riêng việc lớn hơn một word chưa đủ để kết luận SPSC sai.
+## 6. Kiểm tra hồ sơ
 
-Stress test xác nhận không có lỗi trong các lượt đã chạy; lập luận an toàn dựa trên mô hình SPSC, quyền sở hữu slot và memory ordering. Kết quả áp dụng cho cấu hình Cortex-M3 đơn nhân hiện tại, không tự suy rộng sang nhiều producer/consumer hoặc SMP.
+`PREDICTION.md` đã có commit `b236159` ngày 21/10/2026; bản rà chỉ sửa bố cục và làm rõ giả định. Source hiện tại qua `tools/check_api.sh week2/ex1 week2/ex2 week2/ex3`: **PASS (14 files)**. Build và phạm vi kiểm chứng ghi trong [validation.md](../ex3/measurements/validation.md). Chưa có raw UART file cho W2.2; ảnh gốc đã lưu là bằng chứng hiện có và đủ đọc các số yêu cầu.

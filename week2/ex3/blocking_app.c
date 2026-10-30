@@ -350,6 +350,13 @@ static void task_m1(void *arg)
     uart1_write_u32(s_l_waiting_b);
     uart1_write_char(',');
     uart1_write_u32((uint32_t)s_h_pending);
+
+    uart1_write_string("\r\n# HWM_WORDS L,M1,M2,H:");
+    for (uint32_t i = 0u; i < W2E3_NUM_TASKS; ++i) {
+        uart1_write_char(' ');
+        uart1_write_u32((uint32_t)uxTaskGetStackHighWaterMark(s_tasks[i]));
+    }
+
     uart1_write_string("\r\n# TRACE: cycles,tag,event\r\n");
 
     const uint32_t records = tracer_dump_uart();

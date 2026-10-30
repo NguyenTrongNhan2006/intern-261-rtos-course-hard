@@ -55,7 +55,8 @@ typedef struct {
 static volatile i2c1_context_t s_i2c1;
 static StaticSemaphore_t s_mutex_storage;
 static SemaphoreHandle_t s_bus_mutex;
-static uint32_t s_recovery_pulse_count; // Số xung SCL của lần recovery gần nhất; ghi khi giữ mutex bus.
+static uint32_t s_recovery_pulse_count;
+// Số xung SCL của lần recovery gần nhất; ghi khi giữ mutex bus.
 
 /* STEP 2: Chờ FreeRTOS dùng tick; chờ thanh ghi dùng cycle của DWT.
  * Chỉ cho gọi API blocking sau init, ngoài ISR và ngoài vùng khóa ngắt.

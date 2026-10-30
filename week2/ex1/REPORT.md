@@ -1,56 +1,112 @@
-# W2.1 – REPORT
+# W2.1 – Driver I2C1 bằng ngắt và bus recovery
 
-MSSV: 2452882. STM32F103C8T6, I2C1 PB6/PB7, 100 kHz, MPU6050 0x68, timeout 28 ms, yêu cầu 11 lần phục hồi liên tiếp.
-Lỗi `INIT,BUS` ở lần chạy đầu đã khắc phục: khởi tạo và đọc mẫu OK (`measurements/uart_mpu6050_ok.png`).
+MSSV **2452882**. Rà soát bằng chứng ngày **30/10/2026**.
 
-## Cách test
-- Không rút dây tay; dùng GPIO mô phỏng (README cho phép): PB12 open-drain → 220 Ω → SDA, kéo SDA LOW 30 µs mỗi giây (bật bằng `-DW2E1_FAULT_INJECT=ON`).
-- Điểm đánh dấu cho logic analyzer (bật bằng `-DW2E1_TRACE_EV=ON`): PB13 = ISR EV, PB14 = ISR ER. PB12 nối LA nên kênh FAULT bám theo SDA qua điện trở.
-- Logic analyzer: PulseView, 12 MHz (giao dịch thường) và 4 MHz (chèn lỗi). Hai lần chụp đầu sai dây đo đã bị bỏ.
+## 1. Kết quả và phạm vi đã đo
 
-## Số đo
+Đã đo giao dịch MPU6050 bình thường, ngắt EV/ER, timeout và recovery sau xung lỗi SDA ngắn. Ba log có **38, 38 và 40 lần recovery liên tiếp được giao dịch OK kế tiếp xác nhận**, vượt yêu cầu 11 lần cho loại lỗi này.
 
-**Chuỗi ngắt bình thường** (`measure_v1.sr`, `measure_v1_boot.sr`):
+**Chưa đủ bằng chứng cho trường hợp SDA bị slave giữ LOW và phải phát xung SCL để giải phóng:** mọi dòng recovery đều có `PULSES=0`. Vì vậy chưa kết luận đã kiểm chứng toàn bộ nhánh bus recovery trong đề. Phần đo bổ sung cần làm được ghi ở mục 7.
 
-| Giao dịch | Xung EV | Dự đoán | Thời gian bus | Xung SCL |
-|---|---|---|---|---|
-| Ghi 1 byte (chọn register) | 4 | N+3 = 4 | 196,6 µs | 19 |
-| Đọc 6 byte | 7 | 7 | 646,6 µs | 64 |
-| Đọc 1 byte (`WHO_AM_I`) | 3 | 3 | 196,7 µs | 19 |
-| Ghi 2 byte (`PWR_MGMT_1`) | 5 | N+3 = 5 | 286,6 µs | 28 |
+## 2. Cấu hình và cách thu dữ liệu
 
-START → EV5: 6,4–6,6 µs (khoảng 5 µs là thời gian giữ START của 100 kHz). Mỗi lần vào ISR EV: 2,1–2,2 µs. Không có xung ER nào.
+| Thành phần | Cấu hình |
+|---|---|
+| MCU / clock | STM32F103C8T6, HCLK 72 MHz, PCLK1 36 MHz |
+| Bus | I2C1 PB6/SCL, PB7/SDA; 100 kHz; MPU6050 địa chỉ 7-bit `0x68` |
+| Timeout / recovery target | 28 ms / 11 lần liên tiếp, theo `include/params.h` |
+| Client | Hai task đọc ACCEL/GYRO; static mutex bảo vệ chuỗi chọn register rồi đọc dữ liệu |
+| Hoàn tất giao dịch | ISR EV/ER báo task notification; task chờ bằng `ulTaskNotifyTake` |
+| UART | USB-UART COM13 tại lượt đo đã lưu, 115200 8N1 |
+| Logic analyzer | SCL, SDA, PB13/EV, PB14/ER, PB12/FAULT; 12 MHz hoặc 4 MHz |
+| Chèn lỗi | PB12 open-drain nối SDA qua 220 Ω; xung đặt 30 µs, khoảng 1 lần/giây |
 
-**Phục hồi liên tiếp** (log UART, 1 banner trong mỗi file ⇒ MCU không reset):
+Firmware chèn lỗi dùng `W2E1_FAULT_INJECT=ON`, marker ISR dùng `W2E1_TRACE_EV=ON`. PB12 nối chung mạng SDA qua điện trở nên kênh FAULT bám theo SDA; kênh này không phải tín hiệu điều khiển chèn lỗi độc lập. Không dùng nó để suy ra mọi cạnh SDA đều là xung lỗi.
 
-| File | RECOVERED | Streak lớn nhất | Trạng thái khác |
-|---|---|---|---|
-| `w2e1_inject_la.log.txt` | 38 | 38 | không có |
-| `w2e1_inject_la2.log.txt` | 38 | 38 | không có |
-| `w2e1_inject_la4.log.txt` | 40 | 40 | không có |
+Danh sách file gốc và cách mở capture nằm trong [measurements/README.md](measurements/README.md). Các hình bên dưới được dựng trực tiếp từ sample trong `.sr`; mỗi sample tương ứng 0.0833 µs ở 12 MHz hoặc 0.25 µs ở 4 MHz.
 
-Mỗi `RECOVERED` đều được một dòng `OK` kế tiếp xác nhận mới tính vào streak. Yêu cầu 11 lần: đạt. Thời gian một lượt `RECOVERED` (cột `US`, `la4`): 14 lần nhanh 153–427 µs, 26 lần chậm 28 050 µs. `PULSES` luôn bằng 0.
+## 3. Giao dịch và ngắt bình thường
 
-**Dạng sóng recovery** (`measure_v4_inject.sr`, 4 sự cố trong 5 s):
+| Giao dịch đã chọn | Capture; START (ms) | EV | Cạnh lên SCL | START → STOP (µs) |
+|---|---|---:|---:|---:|
+| Ghi register `0x3B` | `measure_v1.sr`; 79.451250 | 4 | 19 | 196.667 |
+| Đọc 6 byte ACCEL | `measure_v1.sr`; 79.684417 | 7 | 64 | 646.583 |
+| Chọn `WHO_AM_I`, ghi `0x75` | `measure_v1_boot.sr`; 741.705667 | 4 | 19 | 196.667 |
+| Đọc `WHO_AM_I = 0x68` | `measure_v1_boot.sr`; 741.938833 | 3 | 19 | 196.667 |
+| Ghi `PWR_MGMT_1`: `0x6B,0x01` | `measure_v1_boot.sr`; 742.172250 | 5 | 28 | 286.583 |
 
-| Thời điểm xung lỗi | Vị trí | Phục hồi |
+Số cạnh SCL ở đây tính cả cạnh lên khi tạo STOP; ví dụ địa chỉ + 1 byte dữ liệu có 18 clock truyền/ACK và 1 cạnh lên cho STOP. Số chữ số thập phân là kết quả đổi sample sang thời gian, không phải độ chính xác tuyệt đối của logic analyzer.
+
+![Ghi register rồi đọc 6 byte, kèm marker EV/ER](measurements/normal_ev.png)
+
+Trong transaction ghi 1 byte, bốn lần vào ISR tương ứng `SB` (EV5), `ADDR` (EV6), `TXE` (EV8) và `BTF` kết thúc truyền (EV8_2), đối chiếu FSM trong `i2c1_driver.c`. EV5 bắt đầu sau START khoảng 6.583 µs ở transaction đã chọn. Độ rộng marker EV trong cặp ghi/đọc này là **1.000–5.583 µs**, phụ thuộc nhánh xử lý; marker bao gồm thao tác GPIO đo.
+
+Đọc 6 byte có 7 lần vào ISR trong cấu hình này: `SB`, `ADDR`, bốn lượt xử lý `BTF`, rồi `RXNE` cho byte cuối. Nhánh nhận dùng EV7/BTF; không gọi mọi ngắt RX là EV8. Số ngắt quan sát được phụ thuộc FSM và cờ có thể cùng xuất hiện, không phải số cố định cho mọi driver.
+
+![Đọc WHO_AM_I và cấu hình PWR_MGMT_1](measurements/boot_ev.png)
+
+`measure_v1.sr` không có cạnh lên ER. Toàn bộ `measure_v1_boot.sr` có **một xung ER tại 417.853 ms**, nằm ngoài đoạn khởi tạo được chọn ở 741–743 ms. Capture không ghi SR1 tại xung đó nên chưa xác định nguyên nhân; không kết luận cả file boot hoàn toàn không có lỗi.
+
+## 4. UART và số lần recovery liên tiếp
+
+Parser chỉ đọc các hàng đủ 13 cột sau banner của firmware hiện hành. Với log baseline, bỏ phần dữ liệu firmware cũ trước banner, không sửa dòng cũ để tính PASS.
+
+| Log gốc | Banner | Dòng OK | Dòng RECOVERED | RECOVERED → OK tăng streak | Streak lớn nhất |
+|---|---:|---:|---:|---:|---:|
+| [baseline](measurements/w2e1_baseline.log.txt) | 1 | 164 | 0 | 0 | 0 |
+| [inject_la](measurements/w2e1_inject_la.log.txt) | 1 | 981 | 38 | 38 | 38 |
+| [inject_la2](measurements/w2e1_inject_la2.log.txt) | 1 | 1000 | 38 | 38 | 38 |
+| [inject_la4](measurements/w2e1_inject_la4.log.txt) | 1 | 1042 | 40 | 40 | 40 |
+
+`OK` gồm dòng INIT thành công. Ba log chèn lỗi không có status khác ngoài `OK` và `RECOVERED`. `RECOVERED` chỉ báo routine recovery thành công; ứng dụng chỉ tăng streak sau giao dịch `OK` kế tiếp. Không thấy banner khởi động lặp hoặc streak bị xóa trong ba đoạn log, phù hợp với phục hồi mà không reset MCU trong các lượt đã thu.
+
+Trong `inject_la4`, thời gian cột `US` của 40 lượt RECOVERED phân bố như sau:
+
+| US (µs) | 153 | 253 | 387 | 427 | 28050 |
+|---|---:|---:|---:|---:|---:|
+| Số lượt | 5 | 2 | 2 | 5 | 26 |
+
+Có 14 lượt nhanh 153–427 µs và 26 lượt chờ timeout 28.050 ms. `PULSES` bằng 0 trong cả 40 lượt và trong hai log chèn lỗi còn lại.
+
+## 5. Dạng sóng recovery
+
+Trong `measure_v4_inject.sr` (4 MHz, 5 s), ba xung SDA ngắn xảy ra khi SCL HIGH; không có clock truyền trong xung. Xung còn lại làm gián đoạn transaction sau bốn cạnh lên SCL.
+
+| Mốc SDA LOW nhận diện trên capture (ms) | GPIO recovery START (ms) | Chênh lệch (ms) | STOP của lần đọc 6 byte hoàn chỉnh kế tiếp (ms) | SDA LOW → lần đọc đó hoàn tất (ms) |
+|---:|---:|---:|---:|---:|
+| 1097.73850 | 1189.96050 | 92.222 | 1197.83875 | 100.100 |
+| 2120.82675 | 2151.95850 | 31.132 | 2220.83675 | 100.010 |
+| 3150.93250 | 3209.95650 | 59.024 | 3250.83500 | 99.903 |
+| 4176.98975 | 4177.05825 | 0.06850 | 4240.83325 | 63.843 |
+
+Cột cuối là thời gian trên bus tới STOP của frame đọc 6 byte kế tiếp (7 EV, 64 cạnh lên SCL), không phải timestamp của dòng UART `OK`. UART không có timestamp tuyệt đối để ghép từng dòng với từng frame.
+
+![Xung lỗi lúc bus rảnh và START/STOP recovery sau đó](measurements/recovery_slow.png)
+
+Các xung SDA LOW nhận diện có độ rộng **30.5 µs**. Ca nhanh có SDA nhả tại **4177.02025 ms**, ER lên tại **4177.02050 ms** (cách 0.25 µs), GPIO START tại **4177.05825 ms**, và STOP tại **4177.07600 ms**. Vùng START/STOP GPIO dài **17.75 µs**. Khoảng 30.5 µs chèn lỗi nằm trong critical section của fault task, nên không diễn giải ER là phản hồi sau 0.25 µs kể từ lúc bắt đầu xung lỗi.
+
+![Gián đoạn transaction, ER và START/STOP GPIO](measurements/recovery_fast.png)
+
+Trong ba ca chậm, xung tạo START/STOP giả trên bus; routine recovery chạy khi client kế tiếp gặp bus không rảnh rồi hết timeout. Đây là cách giải thích phù hợp với dạng sóng và source; capture không ghi trực tiếp cờ BUSY. Một cạnh SCL lên trong chuỗi START/STOP GPIO không phải chuỗi clock của vòng `i2c1_recovery_pulses()`.
+
+## 6. Đối chiếu PREDICTION và sai số
+
+| Dự đoán trước đo | Kết quả | Nhận xét |
 |---|---|---|
-| 1097,7 / 2120,8 / 3150,9 ms | bus rảnh, SCL HIGH (START+STOP giả, không có xung SCL) | chậm: START/STOP GPIO sau 92 / 31 / 59 ms |
-| 4176,95 ms | giữa giao dịch ghi, sau 4 xung SCL | nhanh: ER sau 1 µs, START/STOP GPIO sau 38 µs, dài 17 µs |
+| Ghi N byte: khoảng N+3 ngắt EV | N=1: 4; N=2: 5 | Khớp các transaction được chọn |
+| START → EV5 vài µs | 6.583 µs ở transaction mẫu | Gồm thời gian phần cứng tạo START; không phải latency CPU thuần |
+| Đủ 11 recovery liên tiếp nếu lỗi được gỡ | 38 / 38 / 40, mỗi recovery có OK xác nhận | Đạt với xung lỗi ngắn đã đo |
+| Gỡ SDA bằng tối đa 9 xung SCL | PULSES=0 trong mọi log | Chưa kiểm chứng nhánh phát clock |
+| Phát hiện lỗi → transaction kế tiếp OK khoảng 1–5 ms nếu task được chạy ngay | Không có timestamp đúng mốc phát hiện lỗi; lần đọc kế tiếp trên bus cách xung lỗi 63.843–100.100 ms | Chưa kiểm chứng đúng metric dự đoán; không gán PASS từ một ca GPIO recovery nhanh |
 
-## Giải thích sai lệch (ĐỊNH LƯỢNG)
+Cặp ghi/đọc mẫu trên bus kéo dài **879.750 µs**, gồm 196.667 µs ghi, 36.500 µs khoảng cách và 646.583 µs đọc. UART của cấu hình có marker thường in khoảng **917 µs** cho một lượt client. Chênh lệch đối chiếu khoảng **37.250 µs**, có thể bao gồm lời gọi driver, mutex và xử lý phần mềm; hai nguồn chưa được ghép timestamp cùng transaction nên chưa phân bổ riêng chi phí từng thành phần.
 
-- Một cặp ghi + đọc đo bằng DWT là 917 µs, trên bus là 196,6 + 36 + 646,6 = 879 µs. Phần dư khoảng 38 µs là thời gian phần mềm (lấy mutex, `wait_bus_free`, nhả bus). Bật PB13 trong ISR làm số này từ 916 lên 917 µs.
-- `US` = 28 050 µs ≈ 28 ms timeout + khoảng 50 µs recovery. Ca chậm: xung lỗi rơi lúc bus rảnh, client kế tiếp không thấy bus rảnh trong 28 ms rồi recovery; trễ 31–92 ms của 3 sự cố khác nhau chỉ vì client kế tiếp bắt đầu sớm hay muộn (sự cố 2: 3 ms + 28 ms). Đây là suy luận từ dạng sóng, chưa đọc trực tiếp cờ BUSY.
-- Xung chèn lỗi đặt 30 µs đo được 32 µs; thời điểm rơi trễ khoảng 16 µs so với giá trị đặt do cách chờ SCL LOW.
-- So với PREDICTION: số xung EV (N+3) và START → EV5 vài µs đúng; "1–5 ms từ lỗi đến giao dịch OK" đúng cho ca nhanh (khoảng 0,04 ms), sai cho ca chậm (≥ 28 ms vì chờ hết timeout). Dự đoán tối đa 9 xung SCL chưa kiểm chứng vì `PULSES` luôn 0 (MPU6050 chưa giữ SDA).
+`US=28050` phù hợp với timeout 28 ms cộng khoảng 50 µs trong đường xử lý. Thời gian từ xung lỗi đến recovery còn phụ thuộc lúc client bắt đầu gọi driver; thời gian đến giao dịch kế tiếp còn chịu chu kỳ client. Không dùng `US` để thay cho cả hai đại lượng đó.
 
-## Sửa sau kiểm toán
-- Nhánh ARLO trước đây trả `BUS` mà không recovery, làm đứt streak ngay ca lỗi phổ biến nhất; nay chạy `i2c1_recover_locked()` (`i2c1_driver.c`).
-- Thêm đếm số xung SCL (`i2c1_last_recovery_pulses()`) và hai cột log `PULSES,INJ`.
+## 7. Phần còn thiếu và giải thích thiết kế
 
-## Trả lời câu hỏi trade-off
+**Cần đo bổ sung SDA-stuck:** tạo tình huống SDA còn LOW lúc routine recovery bắt đầu, quan sát được 1–9 xung SCL thực sự, SDA nhả và STOP trước một giao dịch thành công. Lặp đến ít nhất 11 recovery liên tiếp được OK xác nhận, có log `PULSES>0` và capture đồng bộ. Nếu SDA tiếp tục bị ngoại vi giữ LOW sau 9 xung, driver phải báo thất bại thay vì ghi recovery thành công. Bộ log hiện tại chưa chứng minh các trường hợp này.
 
-Khi ngoại vi I2C bị kẹt, tiếp tục yêu cầu START không bảo đảm tạo được chuỗi clock cần thiết. Driver tắt I2C, chuyển PB6/PB7 sang GPIO open-drain để điều khiển SCL thủ công, đọc IDR để xác nhận chân thực sự lên HIGH. Sau khi SDA nhả, driver tạo START/STOP rồi trả chân về AF và cấu hình lại I2C.
+Routine giữ mutex bus, tắt IRQ/I2C, chuyển PB6/PB7 sang GPIO open-drain, chỉ phát clock khi SDA chưa nhả, tạo START/STOP, trả chân về AF và cấu hình lại I2C. STOP là SDA LOW→HIGH khi SCL HIGH; nó kết thúc trạng thái truyền trên bus. Nhánh recovery ở source đã có, nhưng source không thay thế bằng chứng đo nhánh phát clock. Chưa làm phép thử bỏ STOP, nên tác động của việc bỏ STOP mới là lập luận thiết kế.
 
-STOP là chuyển SDA từ LOW lên HIGH khi SCL HIGH, giúp slave kết thúc trạng thái giao tiếp. Nếu bỏ STOP, slave có thể còn chờ phần còn lại của giao dịch khiến lần sau lỗi hoặc BUSY chưa được giải phóng. Đây là lập luận thiết kế, chưa làm phép thử bỏ STOP.
+Kiểm tra source ngày 30/10/2026: `tools/check_api.sh week2/ex1 week2/ex2 week2/ex3` **PASS (14 files)**. Build hiện tại và phạm vi kiểm chứng được ghi trong [validation.md](../ex3/measurements/validation.md). Build không bổ sung bằng chứng SDA-stuck còn thiếu.

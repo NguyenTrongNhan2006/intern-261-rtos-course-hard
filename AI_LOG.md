@@ -1,6 +1,6 @@
 # AI_LOG – Nhật ký sử dụng AI
 
-Nguyễn Trọng Nhân – MSSV 2452882. Cập nhật: 23/10/2026.
+Nguyễn Trọng Nhân – MSSV 2452882. Cập nhật: 30/10/2026.
 
 AI sử dụng: Codex; Claude hỗ trợ review W1E2. Các prompt dưới đây được tóm tắt từ yêu cầu và nhật ký đã lưu, không phải trích nguyên văn. AI hỗ trợ giải thích, đề xuất code, rà lỗi và trình bày tài liệu; em chịu trách nhiệm đọc lại, kiểm tra và giải thích bài nộp.
 
@@ -22,15 +22,17 @@ Prompt tóm tắt: hướng dẫn thử heap_4, chuyển sang static allocation,
 
 ## W2E1 – Driver I2C1 và bus recovery
 
-Prompt tóm tắt: viết driver theo STEP, tối ưu code và rút gọn note thanh ghi. AI hỗ trợ FSM, ISR, mutex, task notification, timeout, recovery, hai task MPU6050 và host test. Em thực hiện nối dây, nạp và cung cấp ảnh UART INIT/ACCEL/GYRO OK. Ảnh chưa chứng minh recovery 11 lần liên tiếp; mock trên PC không thay thế phép đo board.
+Prompt tóm tắt: viết driver theo STEP, tối ưu code và rút gọn note thanh ghi; kiểm tra đã đo đủ chưa, rà prediction/report rồi commit W2.1–W2.3. AI hỗ trợ FSM, ISR, mutex, task notification, timeout, recovery và hai task MPU6050. Em nối dây, nạp, chèn lỗi và thu UART/PulseView. Khi rà hồ sơ 30/10, AI đếm lại ba log: 38/38/40 recovery liên tiếp có OK kế tiếp xác nhận, đọc sample trong capture và dựng hình EV/ER/recovery. PULSES luôn 0 nên chưa chứng minh nhánh phát clock gỡ SDA-stuck; báo cáo ghi rõ phần đo bổ sung. Mock/build không thay thế phép đo board.
 
 ## W2E2 – SPSC ring buffer và Queue
 
 Prompt tóm tắt: viết prediction và code tối giản để tự gõ, chạy stress test và so sánh cycle với Queue. AI hỗ trợ spsc_ring.h, DMB, ISR producer, task consumer, DWT benchmark và CMake. Em build, nạp và cung cấp ảnh UART: stress 1.000.000 phần tử PASS; benchmark 7.048 mẫu PASS cho cả Ring và Queue. Ảnh nằm trong week2/ex2/measurements/.
 
+Rà ngày 30/10: AI đọc lại ảnh gốc, đối chiếu source/params, giữ số đo Ring 29/24 cycle và Queue 210/197 cycle, chỉnh cách giải thích benchmark và prediction. Chưa có raw UART file cho W2.2; không mô tả phần chép từ ảnh thành log raw.
+
 ## W2E3 – Blocking và Priority Ceiling
 
-Prompt tóm tắt: cung cấp blocking_app.c, priority_ceiling.c, FreeRTOSConfig.h và prediction ngắn gọn. AI hỗ trợ các kịch bản inversion, chained blocking, deadlock, wrapper ceiling và tích hợp CMake/tracer. Đã kiểm tra build và API; chưa có kết quả nạp/đo trên board. Các thời gian trong PREDICTION.md vẫn là dự đoán.
+Prompt tóm tắt: cung cấp blocking_app.c, priority_ceiling.c, FreeRTOSConfig.h; hướng dẫn từng bước build, nạp, lấy số đo sáu TEST_CASE bằng Serial Debug Assistant, rồi hoàn thiện report/prediction và commit lên GitHub. Em nối UART/ST-Link, build, nạp và gửi sáu file UART. AI kiểm tra CASE/STATUS/overflow/số record, tách block đầu, dựng Gantt và chú thích các lần H chờ A/B, circular wait và kết quả ceiling. WAIT_US_EST lần lượt 47.195 / 32.205 / NA / 17.004 / 17.008 / 32.008 ms; case 2 circular wait, các case khác COMPLETE. Các giá trị ceiling có Ready delay đo theo tick 1 ms; không tuyên bố độ chính xác microsecond cho phần Ready. Giữ nguyên số dự đoán trước đo, tách khỏi số thực nghiệm; các block log lặp không tự chứng minh số phép đo độc lập. Kiểm tra build/API sau rà hồ sơ là kiểm tra source, không phải lần chạy board bổ sung.
 
 ## Giới hạn kiểm chứng
 

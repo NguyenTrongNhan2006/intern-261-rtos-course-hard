@@ -1,10 +1,9 @@
 /* Interface for the W2.3 Immediate Priority Ceiling Protocol (IPCP)
  * wrapper, built on top of the raw FreeRTOS semaphore/mutex API (no
- * modification to the kernel itself). Task priorities / periods / lock
- * hold times for the 4-task / 2-mutex scenario come from params.h
- * (W2E3_TASK_PRIORITY[4], W2E3_TASK_PERIOD_MS[4], W2E3_LOCK_HOLD_MS_A/B).
- * The 3 demonstration scenarios (inversion, chained blocking, deadlock)
- * and the ceiling values themselves are yours to design and implement. */
+ * modification to the kernel itself). Task priorities and lock hold
+ * times for the 4-task / 2-mutex scenario come from params.h
+ * (W2E3_TASK_PRIORITY[4], W2E3_LOCK_HOLD_MS_A/B).
+ * blocking_app.c runs the three scenarios with and without ceiling. */
 #ifndef W2E3_PRIORITY_CEILING_H
 #define W2E3_PRIORITY_CEILING_H
 
@@ -28,14 +27,14 @@ typedef struct {
  * pc_mutex_lock() on this resource). */
 void pc_mutex_create_static(pc_mutex_t *m, UBaseType_t ceiling_prio);
 
-/* Immediate Priority Ceiling lock: takes the underlying mutex, then raises
- * the CALLING task's priority to ceiling_prio via vTaskPrioritySet()
- * before returning (the boost happens even if the mutex was free, which
- * is what makes this "immediate" rather than inheritance-on-contention). */
+/* Raise the CALLING task to ceiling_prio before taking the mutex. Save its
+ * previous priority only after acquisition succeeds. This demonstration
+ * assumes correct ceilings, no time slicing or self-suspension while a
+ * lock is held, no recursive acquisition, and LIFO release of nested locks. */
 void pc_mutex_lock(pc_mutex_t *m);
 
-/* Restores the calling task's priority to what it was before the matching
- * pc_mutex_lock() (saved_prio), then gives the underlying mutex. */
+/* Give the mutex, then restore the priority saved by the matching lock.
+ * The caller must own this mutex and release nested locks in LIFO order. */
 void pc_mutex_unlock(pc_mutex_t *m);
 
 #ifdef __cplusplus
