@@ -34,6 +34,10 @@ Rà ngày 30/10: AI đọc lại ảnh gốc, đối chiếu source/params, gi�
 
 Prompt tóm tắt: cung cấp blocking_app.c, priority_ceiling.c, FreeRTOSConfig.h; hướng dẫn từng bước build, nạp, lấy số đo sáu TEST_CASE bằng Serial Debug Assistant, rồi hoàn thiện report/prediction và commit lên GitHub. Em nối UART/ST-Link, build, nạp và gửi sáu file UART. AI kiểm tra CASE/STATUS/overflow/số record, tách block đầu, dựng Gantt và chú thích các lần H chờ A/B, circular wait và kết quả ceiling. WAIT_US_EST lần lượt 47.195 / 32.205 / NA / 17.004 / 17.008 / 32.008 ms; case 2 circular wait, các case khác COMPLETE. Các giá trị ceiling có Ready delay đo theo tick 1 ms; không tuyên bố độ chính xác microsecond cho phần Ready. Giữ nguyên số dự đoán trước đo, tách khỏi số thực nghiệm; các block log lặp không tự chứng minh số phép đo độc lập. Kiểm tra build/API sau rà hồ sơ là kiểm tra source, không phải lần chạy board bổ sung.
 
+## W2E4 – Barrier và bug mất notification
+
+Prompt tóm tắt: tiếp tục từ buggy.log.txt, kiểm tra có cần logic analyzer không, sau đó rà prediction, điền report và kiểm tra build/API cho cả buggy/fixed. Em nạp và thu hai log UART đầy đủ; AI đối chiếu source, đếm lại 1000 marker gửi và 500 marker nhận mỗi lượt. Buggy nhận 500 sự kiện, fixed nhận count 2 trong cả 500 lần nên tổng 1000; TRACE_DROPPED bằng 0. AI tách EV/Gantt, tạo CSV và biểu đồ từ log gốc, ghi rõ Gantt chỉ bao phủ khoảng 0.29 s còn EV bao phủ toàn lượt khoảng 5 s. Báo cáo giữ cycle đo được 297/571 và 303/581: notification không nhanh hơn trong benchmark tự notify/wait này. RAM 460/380 byte là chi phí đối tượng; hai image vẫn giữ semaphore benchmark và cùng dùng 6800 byte RAM. Giữ các con số prediction định lượng đã có, ghi rõ chưa có commit prediction định lượng riêng trước đo; không chỉnh lịch sử hoặc số dự đoán để khớp kết quả. Build/API sau rà hồ sơ tách khỏi bằng chứng chạy board.
+
 ## Giới hạn kiểm chứng
 
 Build, API check và host test không chứng minh firmware chạy đúng trên phần cứng. Các kết quả phải gắn với đúng phiên bản, log hoặc ảnh đã thu. Em cần tự giải thích code và đối chiếu dự đoán với phép đo khi bảo vệ bài.

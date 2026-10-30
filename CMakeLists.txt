@@ -450,3 +450,73 @@ if(OPENOCD_EXECUTABLE)
         USES_TERMINAL
     )
 endif()
+
+# Event-group barrier va hai bien the task notification.
+set(W2E4_BURST_PERIOD_MS 10 CACHE STRING
+    "W2E4: chu ky moi cap gui (ms)")
+set(W2E4_BARRIER_LATE_MS 0 CACHE STRING
+    "W2E4: Logger den barrier muon (ms); 150 = ep timeout")
+
+function(add_w2e4_target target_name fixed_mode)
+    add_executable(${target_name}
+        platform/startup.c
+        platform/system.c
+        platform/gpio.c
+        platform/uart.c
+        week1/ex2/tracer.c
+        week2/ex4/sync_app.c
+        third_party/FreeRTOS-Kernel/tasks.c
+        third_party/FreeRTOS-Kernel/list.c
+        third_party/FreeRTOS-Kernel/queue.c
+        third_party/FreeRTOS-Kernel/event_groups.c
+        third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+    )
+
+    set_target_properties(${target_name} PROPERTIES SUFFIX ".elf")
+
+    target_include_directories(${target_name} PRIVATE
+        week2/ex4/include
+        week1/ex2/include
+        platform/include
+        third_party/CMSIS_5/CMSIS/Core/Include
+        third_party/cmsis-device-f1/Include
+        third_party/FreeRTOS-Kernel/include
+        third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+    )
+
+    target_compile_definitions(${target_name} PRIVATE
+        STM32F103xB
+        TRACER_FIRST_PIN=4u
+        TRACER_LAST_PIN=7u
+        USE_FIXED=${fixed_mode}
+        BURST_PERIOD_MS=${W2E4_BURST_PERIOD_MS}u
+        BARRIER_LATE_MS=${W2E4_BARRIER_LATE_MS}u
+    )
+    target_compile_options(${target_name} PRIVATE -O2)
+
+    target_link_options(${target_name} PRIVATE
+        "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+        -nostartfiles
+        "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/${target_name}.map"
+        -Wl,--print-memory-usage
+        -Wl,-z,noexecstack
+    )
+
+    if(OPENOCD_EXECUTABLE)
+        add_custom_target(${target_name}_flash
+            COMMAND "${OPENOCD_EXECUTABLE}"
+                -f interface/stlink.cfg
+                -c "transport select swd"
+                -f target/stm32f1x.cfg
+                -c "adapter speed 100"
+                -c "reset_config none"
+                -c "program {$<TARGET_FILE:${target_name}>} verify reset exit"
+            DEPENDS ${target_name}
+            VERBATIM
+            USES_TERMINAL
+        )
+    endif()
+endfunction()
+
+add_w2e4_target(w2e4 0)
+add_w2e4_target(w2e4_fixed 1)

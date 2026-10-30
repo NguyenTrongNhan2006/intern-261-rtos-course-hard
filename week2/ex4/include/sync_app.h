@@ -2,9 +2,8 @@
  * signalling (with its seeded eSetValueWithOverwrite bug, found and then
  * fixed). Task count / sync bits / timeout come from params.h
  * (W2E4_NUM_TASKS, W2E4_SYNC_BITS_MASK, W2E4_SYNC_TIMEOUT_MS). Event-group
- * creation, the notification-based send/receive pair, the tracer
- * instrumentation used to count sends vs. receives, and the fixed version
- * are entirely yours to implement. */
+ * creation, both notification variants and timestamped send/receive
+ * instrumentation are implemented in sync_app.c. */
 #ifndef W2E4_SYNC_APP_H
 #define W2E4_SYNC_APP_H
 
@@ -14,9 +13,9 @@
 extern "C" {
 #endif
 
-/* Barrier participant body: does its share of work, then calls
- * xEventGroupSync() with its own bit ORed into both "bits to set" and
- * "bits to wait for" (W2E4_SYNC_BITS_MASK), bounded by
+/* Barrier participant body: calls xEventGroupSync() with its own bit in
+ * "bits to set" and the complete W2E4_SYNC_BITS_MASK in "bits to wait for",
+ * bounded by
  * W2E4_SYNC_TIMEOUT_MS. idx (0..W2E4_NUM_TASKS-1) is passed as
  * pvParameters and selects which bit this task owns. */
 void vTaskBarrierParticipant(void *pvParameters);
@@ -32,11 +31,10 @@ void sync_app_init_barrier(void);
 void sync_app_notify_send_buggy(uint32_t value);
 void sync_app_notify_receive_buggy(uint32_t *out_value);
 
-/* Fixed variant: same send/receive shape, but using a notification
- * strategy that cannot silently drop an event under the same timing
- * (e.g. eSetBits with an accumulating bit per event, or eIncrement with a
- * matching drain loop on the receive side — your choice, document it in
- * REPORT.md). */
+/* Fixed variant: eIncrement accumulates the event count. Receive drains
+ * that count with xTaskNotifyWait() and adds it to the running total.
+ * The value parameter is recorded only as a debug sequence; payloads are
+ * not queued. Correct counting requires no slot reuse or counter wrap. */
 void sync_app_notify_send_fixed(uint32_t value);
 void sync_app_notify_receive_fixed(uint32_t *out_value);
 

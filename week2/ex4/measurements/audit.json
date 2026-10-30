@@ -1,0 +1,157 @@
+[
+  {
+    "variant": "buggy",
+    "metadata": {
+      "USE_FIXED": "0",
+      "CPU_HZ": "72000000",
+      "SEND_COUNT": "1000",
+      "BURST_PERIOD_MS": "10",
+      "BARRIER_LATE_MS": "0",
+      "BARRIER": "PASS",
+      "BARRIER_RELEASE_CYCLES": "3566",
+      "SENT": "1000",
+      "RECEIVED_EVENTS": "500",
+      "TRACE_DROPPED": "0",
+      "LOST_EVENTS": "500",
+      "STATUS": "LOSS_CONFIRMED",
+      "DWT_OVERHEAD": "1",
+      "BENCH_ITERATIONS": "1000",
+      "BINARY_PAIR_CYCLES": "297",
+      "FIXED_NOTIFY_PAIR_CYCLES": "571",
+      "RAM_EVENT_GROUP": "28",
+      "RAM_BINARY_SEM": "80",
+      "RAM_TCB_EACH": "88",
+      "RAM_ALL_TCBS": "352",
+      "RAM_ALL_STACKS": "3584",
+      "RAM_SYNC_BINARY": "460",
+      "RAM_SYNC_NOTIFY": "380",
+      "overflow": "0",
+      "GANTT_RECORDS": "254"
+    },
+    "send_records": 1000,
+    "receive_calls": 500,
+    "received_events_from_trace": 500,
+    "lost_events_from_trace": 500,
+    "first_pair": [
+      [
+        722702,
+        "S",
+        1
+      ],
+      [
+        723011,
+        "S",
+        2
+      ],
+      [
+        724804,
+        "R",
+        2
+      ]
+    ],
+    "pair_period_cycles": {
+      "min": 719700,
+      "max": 720020,
+      "mean": 719998.9859719439,
+      "median": 720000
+    },
+    "send_marker_gap_cycles": {
+      "min": 309,
+      "max": 390,
+      "mean": 389.838,
+      "median": 390.0
+    },
+    "second_send_to_receive_marker_cycles": {
+      "min": 1107,
+      "max": 1793,
+      "mean": 1130.572,
+      "median": 1107.0
+    },
+    "gantt_first_cycles": 1095,
+    "gantt_last_cycles": 20883602,
+    "last_event_cycles": 360003908,
+    "gantt_gap_cycles": {
+      "min": 247,
+      "max": 291,
+      "mean": 266.36507936507934,
+      "median": 272.0
+    }
+  },
+  {
+    "variant": "fixed",
+    "metadata": {
+      "USE_FIXED": "1",
+      "CPU_HZ": "72000000",
+      "SEND_COUNT": "1000",
+      "BURST_PERIOD_MS": "10",
+      "BARRIER_LATE_MS": "0",
+      "BARRIER": "PASS",
+      "BARRIER_RELEASE_CYCLES": "3600",
+      "SENT": "1000",
+      "RECEIVED_EVENTS": "1000",
+      "TRACE_DROPPED": "0",
+      "STATUS": "BALANCED",
+      "DWT_OVERHEAD": "1",
+      "BENCH_ITERATIONS": "1000",
+      "BINARY_PAIR_CYCLES": "303",
+      "FIXED_NOTIFY_PAIR_CYCLES": "581",
+      "RAM_EVENT_GROUP": "28",
+      "RAM_BINARY_SEM": "80",
+      "RAM_TCB_EACH": "88",
+      "RAM_ALL_TCBS": "352",
+      "RAM_ALL_STACKS": "3584",
+      "RAM_SYNC_BINARY": "460",
+      "RAM_SYNC_NOTIFY": "380",
+      "overflow": "0",
+      "GANTT_RECORDS": "254"
+    },
+    "send_records": 1000,
+    "receive_calls": 500,
+    "received_events_from_trace": 1000,
+    "lost_events_from_trace": 0,
+    "first_pair": [
+      [
+        722687,
+        "S",
+        1
+      ],
+      [
+        723000,
+        "S",
+        2
+      ],
+      [
+        724821,
+        "R",
+        2
+      ]
+    ],
+    "pair_period_cycles": {
+      "min": 719702,
+      "max": 720019,
+      "mean": 719998.9719438878,
+      "median": 720000
+    },
+    "send_marker_gap_cycles": {
+      "min": 313,
+      "max": 411,
+      "mean": 394.868,
+      "median": 395.0
+    },
+    "second_send_to_receive_marker_cycles": {
+      "min": 1121,
+      "max": 1821,
+      "mean": 1144.81,
+      "median": 1130.0
+    },
+    "gantt_first_cycles": 1088,
+    "gantt_last_cycles": 20883610,
+    "last_event_cycles": 360003888,
+    "gantt_gap_cycles": {
+      "min": 242,
+      "max": 287,
+      "mean": 258.63492063492066,
+      "median": 262.0
+    }
+  }
+]
