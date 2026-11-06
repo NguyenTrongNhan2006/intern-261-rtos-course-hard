@@ -520,3 +520,109 @@ endfunction()
 
 add_w2e4_target(w2e4 0)
 add_w2e4_target(w2e4_fixed 1)
+
+# W3.1 STEP 1: Thêm mã nhận USART1 qua DMA vòng, Stream Buffer tĩnh và đo tải CPU.
+add_executable(w3e1
+    platform/startup.c
+    platform/system.c
+    platform/uart.c
+    week3/ex1/main.c
+    week3/ex1/uart_dma_rx.c
+    week3/ex1/uart_frame_parser.c
+    week3/ex1/runtime_stats.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/stream_buffer.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+# W3.1 STEP 2: Chọn STM32F103, mức tối ưu và cấu hình linker.
+set_target_properties(w3e1 PROPERTIES SUFFIX ".elf")
+target_include_directories(w3e1 PRIVATE
+    week3/ex1/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+target_compile_definitions(w3e1 PRIVATE STM32F103xB)
+target_compile_options(w3e1 PRIVATE -O2)
+target_link_options(w3e1 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w3e1.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+
+if(OPENOCD_EXECUTABLE)
+    # W3.1 STEP 3: Nạp ELF qua ST-Link và xác minh nội dung Flash.
+    add_custom_target(w3e1_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w3e1>} verify reset exit"
+        DEPENDS w3e1
+        COMMENT "Flashing w3e1 with ST-Link"
+        VERBATIM
+        USES_TERMINAL
+    )
+endif()
+
+# W3.2 STEP 1: Cổng FreeRTOS Cortex-M3 với hook tickless và bộ nhớ tĩnh.
+option(W3E2_TRY_LSE "W3.2: thu LSE truoc khi chon LSI" OFF)
+add_executable(w3e2
+    platform/startup.c
+    platform/system.c
+    platform/gpio.c
+    platform/uart.c
+    week3/ex2/main.c
+    week3/ex2/tickless_rtc.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+# W3.2 STEP 2: Dùng linker STM32F103C8, giữ file map để kiểm tra bộ nhớ.
+set_target_properties(w3e2 PROPERTIES SUFFIX ".elf")
+target_include_directories(w3e2 PRIVATE
+    week3/ex2/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+target_compile_definitions(w3e2 PRIVATE
+    STM32F103xB
+    W3E2_TRY_LSE=$<BOOL:${W3E2_TRY_LSE}>
+)
+target_compile_options(w3e2 PRIVATE -O2)
+target_link_options(w3e2 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w3e2.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+
+# W3.2 STEP 3: Cung cấp target nạp theo cùng cấu hình OpenOCD của W3.1.
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w3e2_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w3e2>} verify reset exit"
+        DEPENDS w3e2
+        VERBATIM
+        USES_TERMINAL
+    )
+endif()

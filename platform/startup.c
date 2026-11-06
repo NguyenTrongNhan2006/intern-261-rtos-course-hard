@@ -32,6 +32,11 @@ WEAK_DEFAULT_HANDLER(I2C1_EV_IRQHandler);
 WEAK_DEFAULT_HANDLER(I2C1_ER_IRQHandler);
 /* W2.2: Handler mặc định nếu ứng dụng chưa cung cấp ISR TIM2. */
 WEAK_DEFAULT_HANDLER(TIM2_IRQHandler);
+/* W3.1: Alias yếu cho ngắt nhận. Bài cũ dùng Default_Handler nếu không định nghĩa riêng. */
+WEAK_DEFAULT_HANDLER(DMA1_Channel5_IRQHandler);
+WEAK_DEFAULT_HANDLER(USART1_IRQHandler);
+/* STEP W3.2: Alias yếu giữ vector mặc định cho các target chưa dùng báo thức. */
+void RTCAlarm_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
 
 typedef void (*isr_handler_t)(void);
 
@@ -65,7 +70,7 @@ const isr_handler_t vector_table[] = {
 
     /* IRQ 11–17: DMA1 Channel 1–7 */
     Default_Handler, Default_Handler, Default_Handler,
-    Default_Handler, Default_Handler, Default_Handler,
+    Default_Handler, DMA1_Channel5_IRQHandler, Default_Handler,
     Default_Handler,
 
     /* IRQ 18–22: ADC1_2, USB/CAN, CAN, CAN */
@@ -91,11 +96,11 @@ Default_Handler,  /* IRQ30: TIM4. */
     Default_Handler,   // IRQ 34: I2C2_ER.
 
     /* IRQ 35–39: SPI1, SPI2, USART1, USART2, USART3 */
-    Default_Handler, Default_Handler, Default_Handler,
+    Default_Handler, Default_Handler, USART1_IRQHandler,
     Default_Handler, Default_Handler,
 
     /* IRQ 40–42: EXTI15_10, RTCAlarm, USBWakeUp */
-    Default_Handler, Default_Handler, Default_Handler
+    Default_Handler, RTCAlarm_IRQHandler, Default_Handler
 };
 
 void Reset_Handler(void)
