@@ -1,42 +1,40 @@
-/* Interface for the W3.2 RTC-alarm-based tickless idle (STOP mode).
- * Drift bound / test window come from params.h (W3E2_DRIFT_BOUND_PPM,
- * W3E2_DRIFT_TEST_WINDOW_MIN). RTC prescaler setup, the
- * portSUPPRESS_TICKS_AND_SLEEP() implementation itself, STOP-mode entry/
- * exit and the 72 MHz clock restore afterwards are entirely yours to
- * implement (wire this header's functions into port.c's
- * portSUPPRESS_TICKS_AND_SLEEP macro / your own override, per the
- * configUSE_TICKLESS_IDLE=2 application hook). */
 #ifndef W3E2_TICKLESS_RTC_H
 #define W3E2_TICKLESS_RTC_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Call once before vTaskStartScheduler(): configures RTC clock source
- * (LSE or LSI - document the choice and its tolerance in REPORT.md),
- * prescaler so 1 RTC second-interrupt tick maps to configTICK_RATE_HZ,
- * and the EXTI line used by the RTC alarm to wake from STOP. */
+/* STEP 1: Khởi tạo và hiệu chuẩn RTC trước khi bộ lập lịch bắt đầu. */
 void tickless_rtc_init(void);
 
-/* Application-supplied tickless idle hook: called by the port layer with
- * the number of ticks the scheduler says it is safe to sleep for
- * (already bounded by portMAX_DELAY handling upstream). Must: check
- * eTaskConfirmSleepModeStatus(), set an RTC alarm for
- * (xExpectedIdleTime - entry/exit overhead) ticks, stop SysTick, enter
- * STOP mode (PWR_CR + WFI), and on wake restore the 72 MHz clock and call
- * vTaskStepTick() with however many whole ticks actually elapsed. */
+/* STEP 2: Hook chạy trong Idle khi bộ lập lịch đang tạm ngưng.
+ * expected_idle_ticks giới hạn số tick có thể cộng bù trước hạn tác vụ kế tiếp. */
 void tickless_suppress_ticks_and_sleep(uint32_t expected_idle_ticks);
 
-/* Returns the cumulative drift (in RTC sub-ticks, signed) your bookkeeping
- * has accumulated since tickless_rtc_init() - used to cross-check against
- * the wall-clock-vs-PC drift test described in README.md. */
+/* STEP 3: Đọc số liệu từ tác vụ đo. Counter có đơn vị bước RTC và có thể tràn.
+ * late_wakes đếm số lần thời gian đo vượt khoảng tick được phép cộng bù. */
+typedef struct {
+    uint32_t rtc_cnt;
+    uint32_t sleep_entries;
+    uint32_t cal_freq_millihz;
+    uint32_t rtc_faults;
+    uint32_t late_wakes;
+    uint32_t recalibrations;       /* Số lần đo lại tần số RTC giữa lúc chạy. */
+    bool uses_lse;
+} tickless_rtc_stats_t;
+
+tickless_rtc_stats_t tickless_rtc_get_stats(void);
+
+/* Phần dư quy đổi có đơn vị phần triệu chu kỳ lõi, luôn nhỏ hơn một chu kỳ.
+ * Dùng để kiểm tra phép quy đổi, còn độ trôi 10 phút lấy từ tick so với máy tính. */
 int32_t tickless_rtc_get_accumulated_drift(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* W3E2_TICKLESS_RTC_H */
+#endif
