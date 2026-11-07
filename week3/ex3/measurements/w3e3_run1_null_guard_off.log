@@ -1,0 +1,33 @@
+W3E3 BOOT reset=PIN 
+W3E3 PM none: .noinit khong co ban ghi hop le (cold boot hoac bi khoi tao lai)
+W3E3 TRAPS div0+unalign=1 disdefwbuf=1 null_guard=0 (C_DEBUGEN=1 hoac DWT khong ho tro: rut nguon board sau khi nap)
+W3E3 ARM step=0 fault=NULL_DEREF_WRITE
+W3E3 BOOT reset=SOFT PIN 
+W3E3 PM step=0 fault=NULL_DEREF_WRITE source=HardFault canary=0x6C217697 MATCH task=FaultGen
+W3E3 PM pc=0x08001042 lr=0x08001043 xpsr=0x01000000 exc_return=0xFFFFFFFD sp=0x20000600 sp_valid=1
+W3E3 PM r0=0x00000000 r1=0x080020B8 r2=0xDEADBEEF r3=0x00000000 r12=0xFEFEFEFF
+W3E3 PM cfsr=0x00000400 [IMPRECISERR] hfsr=0x40000000 [FORCED] dfsr=0x00000000 [-]
+W3E3 PM bfar=0x00000000 (invalid) mmfar=0x00000000 (invalid)
+W3E3 PM addr2line: arm-none-eabi-addr2line -e build/w3e3/w3e3.elf -f -p -a 0x08001042 0x08001040
+W3E3 TRAPS div0+unalign=1 disdefwbuf=1 null_guard=0 (C_DEBUGEN=1 hoac DWT khong ho tro: rut nguon board sau khi nap)
+W3E3 ARM step=1 fault=NULL_DEREF_READ
+W3E3 NO_FAULT step=1 fault=NULL_DEREF_READ
+W3E3 ARM step=2 fault=INVALID_PC_JUMP
+W3E3 BOOT reset=SOFT PIN 
+W3E3 PM step=2 fault=INVALID_PC_JUMP source=HardFault canary=0x6C217697 MATCH task=FaultGen
+W3E3 PM pc=0x08000F78 lr=0x08000FDB xpsr=0x00000000 exc_return=0xFFFFFFFD sp=0x200005F8 sp_valid=1
+W3E3 PM r0=0x00000000 r1=0x080020D8 r2=0x200006B4 r3=0x08000F78 r12=0xFF0F0000
+W3E3 PM cfsr=0x00020000 [INVSTATE] hfsr=0x40000000 [FORCED] dfsr=0x00000000 [-]
+W3E3 PM bfar=0x00000000 (invalid) mmfar=0x00000000 (invalid)
+W3E3 PM addr2line: arm-none-eabi-addr2line -e build/w3e3/w3e3.elf -f -p -a 0x08000F78 0x08000FD8
+W3E3 TRAPS div0+unalign=1 disdefwbuf=1 null_guard=0 (C_DEBUGEN=1 hoac DWT khong ho tro: rut nguon board sau khi nap)
+W3E3 ARM step=3 fault=UNALIGNED_WORD_ACCESS
+W3E3 BOOT reset=SOFT PIN 
+W3E3 PM step=3 fault=UNALIGNED_WORD_ACCESS source=HardFault canary=0x6C217697 MATCH task=FaultGen
+W3E3 PM pc=0x08000FFE lr=0x08001043 xpsr=0x01000000 exc_return=0xFFFFFFFD sp=0x200005F0 sp_valid=1
+W3E3 PM r0=0x00000000 r1=0x080020F0 r2=0x200006A9 r3=0x200006B0 r12=0xFEFEFF00
+W3E3 PM cfsr=0x01000000 [UNALIGNED] hfsr=0x40000000 [FORCED] dfsr=0x00000000 [-]
+W3E3 PM bfar=0x00000000 (invalid) mmfar=0x00000000 (invalid)
+W3E3 PM addr2line: arm-none-eabi-addr2line -e build/w3e3/w3e3.elf -f -p -a 0x08000FFE 0x08001040
+W3E3 TRAPS div0+unalign=1 disdefwbuf=1 null_guard=0 (C_DEBUGEN=1 hoac DWT khong ho tro: rut nguon board sau khi nap)
+W3E3 DONE da chay het W3E3_ASSIGNED_FAULT_NAMES, nhan RESET de chay lai

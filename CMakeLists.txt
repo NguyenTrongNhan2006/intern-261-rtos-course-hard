@@ -626,3 +626,61 @@ if(OPENOCD_EXECUTABLE)
         USES_TERMINAL
     )
 endif()
+
+# W3.3 STEP 1: HardFault handler naked, bản ghi post-mortem .noinit và bộ gây fault.
+add_executable(w3e3
+    platform/startup.c
+    platform/system.c
+    platform/uart.c
+    week3/ex3/main.c
+    week3/ex3/fault_postmortem.c
+    week3/ex3/fault_inject.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+# W3.3 STEP 2: -g3 và frame pointer để addr2line tra đúng dòng. -mno-unaligned-access để
+# trình biên dịch không tự sinh truy cập lệch, vì CCR.UNALIGN_TRP biến mọi truy cập lệch thành fault.
+set_target_properties(w3e3 PROPERTIES SUFFIX ".elf")
+target_include_directories(w3e3 PRIVATE
+    week3/ex3/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+target_compile_definitions(w3e3 PRIVATE STM32F103xB)
+target_compile_options(w3e3 PRIVATE -O2 -g3 -fno-omit-frame-pointer -mno-unaligned-access)
+target_link_options(w3e3 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w3e3.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+
+# W3.3 STEP 3: Nạp qua ST-Link với cùng cấu hình OpenOCD của W3.1/W3.2. OpenOCD để lại
+# DHCSR.C_DEBUGEN = 1, bit mà phần mềm trên chip không xóa được và chỉ mất khi cấp nguồn lại.
+# Khi bit này bật, sự kiện DWT dừng CPU thay vì vào DebugMonitor nên bộ canh NULL tự tắt.
+# Vì vậy sau khi nạp: ghi DHCSR = DBGKEY (C_DEBUGEN = 0) rồi reset bằng AIRCR.SYSRESETREQ.
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w3e3_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg
+            -c "transport select swd"
+            -f target/stm32f1x.cfg
+            -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w3e3>} verify reset"
+            -c "mww 0xE000EDF0 0xA05F0000"
+            -c "mww 0xE000ED0C 0x05FA0004"
+            -c "shutdown"
+        DEPENDS w3e3
+        COMMENT "Flashing w3e3 with ST-Link"
+        VERBATIM
+        USES_TERMINAL
+    )
+endif()
