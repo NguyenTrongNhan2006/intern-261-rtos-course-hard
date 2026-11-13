@@ -30,6 +30,7 @@ RTA_WRAPPER PendSV_Handler, rta_port_pendsv_handler, 1
 
 /* Fixed instruction workload: preemption preserves the loop counter in
  * the hardware exception frame. Zero is forbidden by the C caller. */
+ 
 .section .text.rta_work_iterations,"ax",%progbits
 .p2align 4
 .global rta_work_iterations

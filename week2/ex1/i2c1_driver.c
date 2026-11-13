@@ -254,7 +254,7 @@ static bool i2c1_recovery_pulses(uint32_t start, uint32_t timeout)
 }
 
 /* STEP 11: Tạo START/STOP bằng GPIO và kiểm tra từng mức qua IDR.
- * SDA xuống/lên khi SCL HIGH; chuyển mức cả hai chân giúp gỡ analog filter.
+ * SDA xuống/lên khi SCL HIGH; chuyển mức cả hai chân giúp gỡ analog filter , đưa MPU về IDE nhé .
  */
 static bool i2c1_recovery_start_stop(uint32_t start, uint32_t timeout)
 {

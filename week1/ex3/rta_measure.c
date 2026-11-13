@@ -8,6 +8,7 @@
 
 #define JOB_CAPACITY 210u
 #define CAL_REPEATS 8u
+/* Thời gian lưu theo cycle; state: 0 = chưa release, 1 = đã release, 2 = hoàn tất. */
 typedef struct {
     uint32_t release, finish, wall;
     uint32_t tick_cycles, pend_cycles, tick_count, pend_count;
@@ -34,8 +35,7 @@ static uint32_t gcd(uint32_t a, uint32_t b)
     return a;
 }
 
-/* Same call and timestamp envelope for calibration and scheduled work.
- * No loop condition reads wall time: an interrupt cannot truncate work. */
+/* Dùng cùng phép đo khi hiệu chỉnh và chạy; ngắt không làm giảm số vòng công việc. */
 __attribute__((noinline, noclone))
 static uint32_t measure_iterations(uint32_t iterations)
 {
@@ -49,7 +49,7 @@ static uint32_t measure_iterations(uint32_t iterations)
 static void calibrate(uint32_t i)
 {
     calibration_t * const c = &calibration[i];
-    c->target = W1E3_BUSY_WAIT_US[i] * (SystemCoreClock / 1000000u);
+    c->target = W1E3_BUSY_WAIT_US[i] * (SystemCoreClock / 1000000u); // 1/72000000
     uint32_t low = 1u, high = c->target;
     while (low < high) {
         const uint32_t middle = low + (high - low) / 2u;
@@ -57,8 +57,7 @@ static void calibrate(uint32_t i)
         else { high = middle; }
     }
     c->iterations = low;
-    /* Recheck the minimum; changing fetch/prefetch phase must not silently
-     * produce a calibration sample below the requested budget. */
+    /* Đo lại nhiều mẫu để bảo đảm số vòng đã chọn không chạy thiếu cycle mục tiêu. */
     for (uint32_t attempt = 0u; attempt < 32u; ++attempt) {
         c->minimum = UINT32_MAX;
         c->maximum = 0u;
@@ -78,7 +77,7 @@ void rta_irq_enter(uint32_t kind)
 {
     const uint32_t now = DWT->CYCCNT;
     configASSERT(kind < 2u);
-    /* SysTick and PendSV share lowest priority in this experiment. */
+    /* kind: 0 = SysTick, 1 = PendSV; cùng ưu tiên nên hai ngắt không lồng nhau. */
     configASSERT(active_irq == -1);
     irq_stats[kind].start = now;
     active_irq = (int32_t)kind;
@@ -104,6 +103,7 @@ void rta_measure_init(void)
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
     __DSB();
     __ISB();
+    /* Hiệu chỉnh khi IRQ tắt để thời gian ngắt không bị tính vào lượng công việc. */
     const uint32_t saved = __get_PRIMASK();
     __disable_irq();
     hyperperiod = 1u;
@@ -118,12 +118,14 @@ void rta_measure_init(void)
         calibrate(i);
     }
     configASSERT(hyperperiod * RTA_HYPERPERIODS < 50000u);
+    /* Chia records thành các vùng liên tiếp; job k của task i nằm tại offsets[i] + k. */
     for (uint32_t i = 0u; i < W1E3_NUM_TASKS; ++i) {
         offsets[i] = total_records;
         job_counts[i] = hyperperiod * RTA_HYPERPERIODS / W1E3_PERIOD_MS[i];
         total_records += job_counts[i];
     }
     configASSERT(total_records <= JOB_CAPACITY);
+    /* Đo chi phí cặp hàm đo IRQ khi không có handler ở giữa. */
     probe_min = UINT32_MAX;
     for (uint32_t n = 0u; n < 32u; ++n) {
         rta_irq_enter(0u);
@@ -156,6 +158,7 @@ void rta_switched_in(void)
 }
 void rta_switched_out(void) { tracer_on_switched_out(); }
 
+/* Ghi release ngay trong SysTick, trước khi task được chọn chạy. */
 void vApplicationTickHook(void)
 {
     const uint32_t tick = xTaskGetTickCountFromISR();
@@ -173,8 +176,7 @@ void vApplicationTickHook(void)
             job_record_t * const r = &records[offsets[i] + sequence];
             configASSERT(r->state == 0u);
             r->release = now;
-            /* The current SysTick is in progress: retain only its part
-             * after this release in the eventual response delta. */
+            /* Chụp cả phần SysTick đã chạy để cuối job chỉ tính phần sau release. */
             r->tick_cycles = ticks_now;
             r->pend_cycles = irq_stats[1].total;
             r->tick_count = irq_stats[0].count;
@@ -183,6 +185,7 @@ void vApplicationTickHook(void)
         }
     }
 }
+
 void rta_job_begin(uint32_t i, uint32_t sequence)
 {
     configASSERT(sequence < job_counts[i]);
@@ -193,6 +196,7 @@ uint32_t rta_run_work(uint32_t i)
 {
     return measure_iterations(calibration[i].iterations);
 }
+/* Khóa IRQ để chốt finish và độ tăng thống kê từ release đến finish nhất quán. */
 void rta_job_end(uint32_t i, uint32_t sequence, uint32_t wall)
 {
     const uint32_t saved = __get_PRIMASK();
@@ -216,6 +220,7 @@ void rta_task_done(void)
     ++done;
     taskEXIT_CRITICAL();
 }
+
 uint32_t rta_hyperperiod_ms(void) { return hyperperiod; }
 uint32_t rta_start_tick(void) { return 20u; }
 
@@ -227,7 +232,7 @@ void vApplicationIdleHook(void)
 {
     if (done != W1E3_NUM_TASKS || dumped != 0u) { return; }
     dumped = 1u;
-    /* Freeze IRQ statistics after the experiment, before UART output. */
+    /* Chụp thống kê sau thí nghiệm; chỉ xuất UART khi cả bốn task đã xong. */
     irq_stats_t snapshot[2];
     const uint32_t saved = __get_PRIMASK();
     __disable_irq();
