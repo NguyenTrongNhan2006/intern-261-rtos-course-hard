@@ -1,0 +1,583 @@
+++target extended-remote :3333
+prvInitialiseNewTask (pxTaskCode=0x200001c8 <s_timer_stack+448>, pcName=0xa5a5a5a5 "", uxStackDepth=2779096485, pvParameters=0xa5a5a5a5, uxPriority=536872744, pxCreatedTask=0x3, pxNewTCB=0x0, xRegions=0x0) at /home/nguyenhoangtrieu/student_task/hard/third_party/FreeRTOS-Kernel/tasks.c:1985
+warning: 1985	/home/nguyenhoangtrieu/student_task/hard/third_party/FreeRTOS-Kernel/tasks.c: No such file or directory
+++monitor reset halt
+[stm32f1x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x080000f8 msp: 0x20005000
+++load
+Loading section .isr_vector, size 0xec lma 0x8000000
+Loading section .text, size 0x2d30 lma 0x80000f0
+Loading section .ARM.exidx, size 0x8 lma 0x8002e20
+Loading section .data, size 0x8 lma 0x8002e28
+Start address 0x080003e4, load size 11820
+Transfer rate: 10 KB/sec, 2955 bytes/write.
+++compare-sections
+Section .isr_vector, range 0x8000000 -- 0x80000ec: matched.
+Section .text, range 0x80000f0 -- 0x8002e20: matched.
+Section .ARM.exidx, range 0x8002e20 -- 0x8002e28: matched.
+Section .data, range 0x8002e28 -- 0x8002e30: matched.
+++monitor reset halt
+[stm32f1x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x01000000 pc: 0x080003e4 msp: 0x20005000
+++eval "monitor bp %#x 2 hw", (unsigned int)&Default_Handler
+++monitor bp 0x80003e0 2 hw
+breakpoint set at 0x080003e0
+++eval "monitor bp %#x 2 hw", (unsigned int)&vApplicationStackOverflowHook
+++monitor bp 0x8000310 2 hw
+breakpoint set at 0x08000310
+++monitor resume
+++eval "monitor sleep %d", $run_ms
+++monitor sleep 2000
+++monitor halt
+[stm32f1x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x61000000 pc: 0x08001cf0 psp: 0x20000450
+++maintenance flush register-cache
++echo \n===== [L1] x/512xw 0x20003300 (PARAMS: 0x20003300..0x20003AFF) =====\n
+
+===== [L1] x/512xw 0x20003300 (PARAMS: 0x20003300..0x20003AFF) =====
++info symbol 0x20003300
+No symbol matches 0x20003300.
++info symbol 0x20003AFF
+No symbol matches 0x20003AFF.
++p/x &_ebss
+$1 = 0x20001c88
++p/x &_estack
+$2 = 0x20005000
++if $_isvoid($w3e4_offline)
+++x/512xw 0x20003300
+0x20003300:	0xdb68fa7f	0x340e73c1	0x601f4145	0x607b41ab
+0x20003310:	0xe22f30f1	0x541bbce5	0x451c288c	0xa89b0aa0
+0x20003320:	0x79be3aca	0xfd5cc785	0xd453d045	0xb2ae1b0d
+0x20003330:	0xd1a67e4d	0x11c41641	0x401578dd	0x932a1ace
+0x20003340:	0x6d915544	0x68e5a848	0xac39388f	0x0ddd54cd
+0x20003350:	0xf4f93ee4	0xb5892fa4	0xb6db2f44	0x141e47bd
+0x20003360:	0xb69b549a	0xacd498a0	0xa70c0e2a	0x05d596b4
+0x20003370:	0x9e8b5f17	0xb2aa03a6	0x6229c90a	0x625cdd67
+0x20003380:	0xfcb8acb6	0xf5fb585d	0x654b1e1d	0xa5074a7c
+0x20003390:	0xd9226a44	0xd524bc51	0x2017914c	0xba35b3b3
+0x200033a0:	0xada9a21a	0x1707429a	0x529fc85f	0x6132aa8b
+0x200033b0:	0xeedec9ea	0x22772b3f	0x4739bc51	0xa228a97b
+0x200033c0:	0x14ad50d1	0xa96c82cb	0xa2e09c1c	0xf09d0f5d
+0x200033d0:	0xd7513cf5	0x269a2ad0	0x3c0a0210	0x0d022171
+0x200033e0:	0x7e19f641	0xf360237b	0xc3e3280e	0x0ef3637d
+0x200033f0:	0xf37d294d	0xd148bb1b	0x2aaed00e	0xd9d551df
+0x20003400:	0x28e9f4e8	0x2d6119fd	0x17802694	0x09a2a8bf
+0x20003410:	0xbe2cfbaa	0x6b14b1e9	0x598752fa	0xaab489ff
+0x20003420:	0x20168a78	0xc1128d02	0x49709c99	0xcd2ab8a0
+0x20003430:	0x4b8a9caa	0xcb181593	0x54169ece	0xfe769afa
+0x20003440:	0x515747d1	0x836e4ce3	0x18ac01b3	0xdf634cb6
+0x20003450:	0x7715851d	0xa4000d21	0x94aa5e1d	0x45085f39
+0x20003460:	0xc9430f6b	0x98ea126a	0xe4649ead	0xcd551f97
+0x20003470:	0xad71957d	0xab63ac80	0x9222ae28	0x11253c19
+0x20003480:	0xa6ab1eaa	0x095a31f4	0x4cc4d745	0xceeea2ee
+0x20003490:	0xbea99aac	0xf5cd50ad	0xd08d8184	0xf42ecce2
+0x200034a0:	0xbc5ab9e2	0x0e5854e5	0x54666735	0xbceaa3b4
+0x200034b0:	0xb7b4a32a	0x91d7a627	0x15bb071d	0x96bb2e23
+0x200034c0:	0xf705dda4	0x0cf4a6ad	0x0b5bec85	0x047c6dc3
+0x200034d0:	0x1b053cc5	0xab899b87	0x12a2c38a	0x1495c357
+0x200034e0:	0x1c95d1ea	0xba14e8fa	0x77da022c	0x1975433f
+0x200034f0:	0xe040a357	0x232a8e48	0x808a282a	0x162f1506
+0x20003500:	0x977e8dbe	0x2786158c	0x6d7290f2	0x66a328e8
+0x20003510:	0x36c1a6ba	0x713856b9	0x4507c5d6	0x25aae293
+0x20003520:	0x6be7abfe	0x3ce1d78b	0x0604751d	0xb868db7d
+0x20003530:	0x0ae835dc	0x1640775a	0xcc546560	0xf710bc90
+0x20003540:	0x5db7b05e	0x4afeac1d	0x0a6cc886	0x55dde597
+0x20003550:	0x7e40780d	0x2d2efa86	0x1c0b0c98	0x38077586
+0x20003560:	0x67155d1d	0x8ea2e56a	0xeaeca3cb	0x1fb7d759
+0x20003570:	0xa5a83223	0xb2aeeba0	0x0ea730c1	0x36b13bbb
+0x20003580:	0xd83d254b	0xc5f94b98	0xc140d06c	0x804aebee
+0x20003590:	0x40e0d4a0	0x58954969	0x551e7679	0xfbce2f0b
+0x200035a0:	0xe690322b	0x4715de44	0x5705470e	0x5c0768a0
+0x200035b0:	0x53ee4b67	0xcbfe4d0d	0x55863bbc	0x036b3a49
+0x200035c0:	0x51148d1c	0x01d3bcc6	0xf982c88c	0x5c07fd7f
+0x200035d0:	0xc953214c	0x27e29ffa	0xac0da8ae	0x554f1d49
+0x200035e0:	0x2765b535	0x8bf9343a	0x9c89abcd	0xd99f3499
+0x200035f0:	0x5d7758d0	0x4ba00e9a	0xc720a5eb	0x3740af4e
+0x20003600:	0xa5f124a8	0x447bc569	0x770d0071	0xcf192bea
+0x20003610:	0x2607a0a6	0xf337278a	0x25b53324	0xa47fab82
+0x20003620:	0x2efb378b	0x9f5dd309	0xa00f95d6	0x886a24ae
+0x20003630:	0x29bc86ae	0x1f8305c8	0x2510f556	0xac92958f
+0x20003640:	0x55f4d2ed	0x7eb4d64d	0xf562caaa	0xd6fc8799
+0x20003650:	0xf4a174c4	0xd01df087	0xe2a48cd5	0x5475c18d
+0x20003660:	0x72281e45	0xd282e84f	0x6676bb0e	0xd4d72f14
+0x20003670:	0x4dc191de	0x360d8b6b	0xc2eeabb9	0x444cbe4d
+0x20003680:	0x88ba28ba	0xcd8c45f7	0x6771276c	0xeaaa03be
+0x20003690:	0x5aa97e2a	0x4bff4000	0xe48ce5dd	0xec9aa3e2
+0x200036a0:	0xad886409	0x55584601	0x3cf75cc2	0x6dfdbdfe
+0x200036b0:	0xb8cb8a22	0x7f1b961e	0x9765e5a6	0xab1e8e0e
+0x200036c0:	0xc5bda5f1	0x18afa7e8	0x90862ecb	0x1097b5d2
+0x200036d0:	0x54202817	0x42cea40a	0x92a06a2a	0x568ca692
+0x200036e0:	0x9b534f01	0xb2a7c901	0x8d891db9	0xd55707a4
+0x200036f0:	0x141f5547	0x822e28ea	0x92afe3a6	0xb8c6fc26
+0x20003700:	0xada1ebea	0x57ef6270	0x5441f514	0x3bef1274
+0x20003710:	0xab47e2a6	0x145ee2c7	0xb68e445b	0xb2fad7a4
+0x20003720:	0xa09886e3	0x2156fd57	0xdf84fd93	0x63ce1bb3
+0x20003730:	0xdb2c6fc8	0x558e7159	0xdec463d9	0xdefed185
+0x20003740:	0xbf860ad7	0x0deceb44	0x81f1fbc6	0x5cb563c6
+0x20003750:	0xc175124f	0xb87b0afa	0xaf2b22bc	0xd02d0af1
+0x20003760:	0xf99f31fc	0xfb6ac804	0xbb2b41aa	0x77aec458
+0x20003770:	0xd35d2c1e	0xfa6c2826	0x4949b28c	0xfb5c30dc
+0x20003780:	0xb6fae3e3	0x7522619a	0xd78045b3	0xf6a3c083
+0x20003790:	0xe5788cab	0xd55a97cf	0x21430196	0xb70a03a2
+0x200037a0:	0xe4fe8bf6	0xd7264f24	0xa830c71d	0x01a286ac
+0x200037b0:	0xeeb3b339	0x9391dc31	0x1d5279d7	0x978b6036
+0x200037c0:	0x196daa15	0x20e8eaf5	0x73ed8c9e	0xb2e417fc
+0x200037d0:	0x74e5d80d	0x3ea7b03e	0xe283b29e	0x4f71ac8d
+0x200037e0:	0xe35d0bcf	0xe23c98ed	0xa9abdfe6	0x795ddcd4
+0x200037f0:	0x7cf1dfd5	0xa8bf0ad1	0xa01c0589	0xbedd4177
+0x20003800:	0xc8a79d63	0x10e41531	0xdd7544d6	0x83b606b7
+0x20003810:	0x2df6b91b	0x2d347504	0xd4000e13	0xb0b1b830
+0x20003820:	0x4aba049a	0x42fc0717	0x084e7a6d	0x0e7aebee
+0x20003830:	0x0e8e7e9b	0xabd1cd5d	0x67df444f	0xad81e0a3
+0x20003840:	0xd293d4df	0x6a19471b	0xc9afa93c	0x5a79d53d
+0x20003850:	0x7150b9d4	0x6138b2ac	0x97bbb0dc	0xe17c18fd
+0x20003860:	0x59834bfd	0xeaa25de7	0xa8366a2d	0xfe355b91
+0x20003870:	0xd9e53e7c	0x85a8a6fc	0x6ee9caaf	0xa150f31d
+0x20003880:	0x2bf3228b	0x9d501849	0x954118d0	0x99698acb
+0x20003890:	0x8b8938e4	0x2cdc5215	0x08807e30	0x2edc9bb2
+0x200038a0:	0x8c8af020	0x34a9d7b1	0x15289837	0x1ca89c37
+0x200038b0:	0xae709a6e	0x86a361d4	0xbd558d5c	0xad523c1e
+0x200038c0:	0x55e45591	0x31ea8225	0x0a4f2a65	0x24691be7
+0x200038d0:	0x14de3770	0x07d815aa	0xa43c3b3c	0x861c1cef
+0x200038e0:	0x606075d8	0xe7c1ca82	0x7af37682	0x4b55d453
+0x200038f0:	0x7e727481	0xf31abeba	0xbe6664f4	0x3b4475bd
+0x20003900:	0xf35fba7a	0x24471d5c	0xd701550c	0x238b868b
+0x20003910:	0xf18dfcb4	0xa9b0d677	0x357bef9b	0xaafaea93
+0x20003920:	0x3f531f23	0x36059b31	0x1755f781	0xbfc3d3a9
+0x20003930:	0x0762ab8b	0x4516cb02	0x0eb49cd1	0x0a9ddf0b
+0x20003940:	0x35157bc7	0x5d0773c0	0x072e5ba3	0x51a775ee
+0x20003950:	0x5d1570cb	0x62a2ad89	0xcd2a06cc	0x616d67d8
+0x20003960:	0x1d44cdc8	0xf616eaa0	0xa48aa626	0x60dc6581
+0x20003970:	0xd5dd057c	0x17a0a6aa	0x0b2588e0	0x00e3e6e3
+0x20003980:	0x8aaeaaba	0x6e381ee8	0xdc1d9ca4	0xc8a9bcbc
+0x20003990:	0xd3f8c82f	0xdb719c54	0xd091d545	0xaee3e825
+0x200039a0:	0xc1bae49b	0x2544e653	0x41bb2a1f	0xa3c90aab
+0x200039b0:	0xc8b08ab2	0xa1c1d91c	0x72c37d41	0x9b8bde88
+0x200039c0:	0x9e756db0	0xa62c6939	0xd9ee8a12	0x567cc506
+0x200039d0:	0xd53f0457	0x03a842ea	0x8e9cf23a	0xd194593d
+0x200039e0:	0xd807c447	0xec6e946f	0xabaa6cae	0x796b3297
+0x200039f0:	0x0dd557d2	0x8eea2ea2	0xf2b92a88	0x0f7847a9
+0x20003a00:	0xae4e2e0d	0x2d44c045	0x27454641	0xad7c40c2
+0x20003a10:	0x87de2910	0xab41a559	0x67a8b9c5	0x8bc9bdf9
+0x20003a20:	0x4c23bb06	0xe422455d	0xd5164ff7	0xb18b638f
+0x20003a30:	0xcebacfa7	0x95da5ce7	0xc430dd7e	0xafcae22e
+0x20003a40:	0xd55f5dae	0xf3ce2aa8	0xb8ab3fb7	0xff0662d0
+0x20003a50:	0x5425ed7c	0xa8a19388	0xade6cbca	0xc56518c1
+0x20003a60:	0x9df68ea1	0xbaec84ab	0x7c8023a2	0xf00539f5
+0x20003a70:	0x7142758f	0x2fcafd18	0xebeaa0bd	0xe1cadc31
+0x20003a80:	0x4ef8f3a7	0x15695f63	0x50918351	0xbea8e86a
+0x20003a90:	0xca326be3	0x6c5319b0	0x69dd7cab	0xacab2aba
+0x20003aa0:	0xb6827343	0x25b4e5b0	0x644d2b65	0xaadaa3fa
+0x20003ab0:	0xae8eeaf4	0x1d7cf9f9	0xa05d5515	0x0101fb59
+0x20003ac0:	0xffd4459c	0x2b14050e	0xeebeb0a0	0x2bded7dc
+0x20003ad0:	0x7007d57a	0xe8bc89d8	0x840fe41e	0xd0658dc8
+0x20003ae0:	0x0d4d0944	0x6695a81e	0xee4ab680	0x55d5bcd8
+0x20003af0:	0x65bff51c	0x298f2438	0xa1a882f9	0xc18fb841
++echo \n===== [L2] CPU va task dang chay =====\n
+
+===== [L2] CPU va task dang chay =====
++if $_isvoid($w3e4_offline)
+++info registers pc lr sp
+pc             0x8001cf0           0x8001cf0 <prvCheckTasksWaitingTermination>
+lr             0x8001c4d           134224973
+sp             0x20000450          0x20000450 <s_idle_stack+492>
+++info all-registers
+r0             0x0                 0
+r1             0xa5a5a5a5          -1515870811
+r2             0xa5a5a5a5          -1515870811
+r3             0x1                 1
+r4             0xa5a5a5a5          -1515870811
+r5             0xa5a5a5a5          -1515870811
+r6             0xa5a5a5a5          -1515870811
+r7             0x20000450          536872016
+r8             0xa5a5a5a5          -1515870811
+r9             0xa5a5a5a5          -1515870811
+r10            0xa5a5a5a5          -1515870811
+r11            0xa5a5a5a5          -1515870811
+r12            0xa5a5a5a5          -1515870811
+sp             0x20000450          0x20000450 <s_idle_stack+492>
+lr             0x8001c4d           134224973
+pc             0x8001cf0           0x8001cf0 <prvCheckTasksWaitingTermination>
+xpsr           0x61000000          1627389952
+msp            0x20004fe0          0x20004fe0
+psp            0x20000450          0x20000450 <s_idle_stack+492>
+primask        0x0                 0
+basepri        0x0                 0
+faultmask      0x0                 0
+control        0x2                 2
+++x/6i $pc
+=> 0x8001cf0 <prvCheckTasksWaitingTermination>:	push	{r7, lr}
+   0x8001cf2 <prvCheckTasksWaitingTermination+2>:	sub	sp, #8
+   0x8001cf4 <prvCheckTasksWaitingTermination+4>:	add	r7, sp, #0
+   0x8001cf6 <prvCheckTasksWaitingTermination+6>:	b.n	0x8001d2c <prvCheckTasksWaitingTermination+60>
+   0x8001cf8 <prvCheckTasksWaitingTermination+8>:	bl	0x8002b78 <vPortEnterCritical>
+   0x8001cfc <prvCheckTasksWaitingTermination+12>:	ldr	r3, [pc, #64]	@ (0x8001d40 <prvCheckTasksWaitingTermination+80>)
+++backtrace
+#0  prvCheckTasksWaitingTermination () at /home/nguyenhoangtrieu/student_task/hard/third_party/FreeRTOS-Kernel/tasks.c:6044
+#1  0x08001c4c in prvIdleTask (pvParameters=0x0) at /home/nguyenhoangtrieu/student_task/hard/third_party/FreeRTOS-Kernel/tasks.c:5773
+#2  0x080029b0 in pxPortInitialiseStack (pxTopOfStack=0x0, pxCode=0xa5a5a5a5, pvParameters=0x8001c4d <prvIdleTask+12>) at /home/nguyenhoangtrieu/student_task/hard/third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c:199
+Backtrace stopped: previous frame identical to this frame (corrupt stack?)
++p/x pxCurrentTCB
+$3 = 0x20000464
++info symbol pxCurrentTCB
+s_idle_tcb in section .bss
++if pxCurrentTCB != 0
+++p *pxCurrentTCB
+$4 = {
+  pxTopOfStack = 0x20000410 <s_idle_stack+428>,
+  xStateListItem = {
+    xItemValue = 0,
+    pxNext = 0x20000a6c <pxReadyTasksLists+8>,
+    pxPrevious = 0x20000a6c <pxReadyTasksLists+8>,
+    pvOwner = 0x20000464 <s_idle_tcb>,
+    pvContainer = 0x20000a64 <pxReadyTasksLists>
+  },
+  xEventListItem = {
+    xItemValue = 8,
+    pxNext = 0x0,
+    pxPrevious = 0x0,
+    pvOwner = 0x20000464 <s_idle_tcb>,
+    pvContainer = 0x0
+  },
+  uxPriority = 0,
+  pxStack = 0x20000264 <s_idle_stack>,
+  pcTaskName = "IDLE", '\000' <repeats 11 times>,
+  uxTCBNumber = 3,
+  uxTaskNumber = 0,
+  uxBasePriority = 0,
+  uxMutexesHeld = 0,
+  ulNotifiedValue = {0},
+  ucNotifyState = "",
+  ucStaticallyAllocated = 2 '\002'
+}
+++x/23xw pxCurrentTCB
+0x20000464 <s_idle_tcb>:	0x20000410	0x00000000	0x20000a6c	0x20000a6c
+0x20000474 <s_idle_tcb+16>:	0x20000464	0x20000a64	0x00000008	0x00000000
+0x20000484 <s_idle_tcb+32>:	0x00000000	0x20000464	0x00000000	0x00000000
+0x20000494 <s_idle_tcb+48>:	0x20000264	0x454c4449	0x00000000	0x00000000
+0x200004a4 <s_idle_tcb+64>:	0x00000000	0x00000003	0x00000000	0x00000000
+0x200004b4 <s_idle_tcb+80>:	0x00000000	0x00000000	0x00000200
++p xTickCount
+$5 = 2033
++p uxCurrentNumberOfTasks
+$6 = 4
++p uxTopReadyPriority
+$7 = 0
++p xSchedulerRunning
+$8 = 1
++p uxSchedulerSuspended
+$9 = 0
++echo \n===== [L3] pxReadyTasksLists[0 .. configMAX_PRIORITIES-1] =====\n
+
+===== [L3] pxReadyTasksLists[0 .. configMAX_PRIORITIES-1] =====
++p sizeof(List_t)
+$10 = 20
++p sizeof(pxReadyTasksLists)
+$11 = 160
++set $nprio = sizeof(pxReadyTasksLists) / sizeof(List_t)
++p $nprio
+$12 = 8
++set $i = 0
++set trace-commands off
+(gdb) x/5xw &pxReadyTasksLists[0]    dia chi 0x20000a64 = base + 20*0
+0x20000a64 <pxReadyTasksLists>:	0x00000001	0x20000468	0xffffffff	0x20000468
+0x20000a74 <pxReadyTasksLists+16>:	0x20000468
+list=0x20000a64 uxNumberOfItems=1 pxIndex=0x20000468 sentinel=0x20000a6c
+  node=0x20000468 xItemValue=0 pvOwner=0x20000464 pvContainer=0x20000a64 -> task "IDLE" uxPriority=0
+  visited=1 declared=1
+(gdb) x/5xw &pxReadyTasksLists[1]    dia chi 0x20000a78 = base + 20*1
+0x20000a78 <pxReadyTasksLists+20>:	0x00000000	0x20000a80	0xffffffff	0x20000a80
+0x20000a88 <pxReadyTasksLists+36>:	0x20000a80
+list=0x20000a78 uxNumberOfItems=0 pxIndex=0x20000a80 sentinel=0x20000a80
+  visited=0 declared=0
+(gdb) x/5xw &pxReadyTasksLists[2]    dia chi 0x20000a8c = base + 20*2
+0x20000a8c <pxReadyTasksLists+40>:	0x00000000	0x20000a94	0xffffffff	0x20000a94
+0x20000a9c <pxReadyTasksLists+56>:	0x20000a94
+list=0x20000a8c uxNumberOfItems=0 pxIndex=0x20000a94 sentinel=0x20000a94
+  visited=0 declared=0
+(gdb) x/5xw &pxReadyTasksLists[3]    dia chi 0x20000aa0 = base + 20*3
+0x20000aa0 <pxReadyTasksLists+60>:	0x00000000	0x20000aa8	0xffffffff	0x20000aa8
+0x20000ab0 <pxReadyTasksLists+76>:	0x20000aa8
+list=0x20000aa0 uxNumberOfItems=0 pxIndex=0x20000aa8 sentinel=0x20000aa8
+  visited=0 declared=0
+(gdb) x/5xw &pxReadyTasksLists[4]    dia chi 0x20000ab4 = base + 20*4
+0x20000ab4 <pxReadyTasksLists+80>:	0x00000000	0x20000abc	0xffffffff	0x20000abc
+0x20000ac4 <pxReadyTasksLists+96>:	0x20000abc
+list=0x20000ab4 uxNumberOfItems=0 pxIndex=0x20000abc sentinel=0x20000abc
+  visited=0 declared=0
+(gdb) x/5xw &pxReadyTasksLists[5]    dia chi 0x20000ac8 = base + 20*5
+0x20000ac8 <pxReadyTasksLists+100>:	0x00000000	0x20000ad0	0xffffffff	0x20000ad0
+0x20000ad8 <pxReadyTasksLists+116>:	0x20000ad0
+list=0x20000ac8 uxNumberOfItems=0 pxIndex=0x20000ad0 sentinel=0x20000ad0
+  visited=0 declared=0
+(gdb) x/5xw &pxReadyTasksLists[6]    dia chi 0x20000adc = base + 20*6
+0x20000adc <pxReadyTasksLists+120>:	0x00000000	0x20000ae4	0xffffffff	0x20000ae4
+0x20000aec <pxReadyTasksLists+136>:	0x20000ae4
+list=0x20000adc uxNumberOfItems=0 pxIndex=0x20000ae4 sentinel=0x20000ae4
+  visited=0 declared=0
+(gdb) x/5xw &pxReadyTasksLists[7]    dia chi 0x20000af0 = base + 20*7
+0x20000af0 <pxReadyTasksLists+140>:	0x00000000	0x20000af8	0xffffffff	0x20000af8
+0x20000b00 <pxReadyTasksLists+156>:	0x20000af8
+list=0x20000af0 uxNumberOfItems=0 pxIndex=0x20000af8 sentinel=0x20000af8
+  visited=0 declared=0
++echo \n===== [L4] danh sach Blocked =====\n
+
+===== [L4] danh sach Blocked =====
++p/x pxDelayedTaskList
+$13 = 0x20000b04
++set $la = (unsigned int)pxDelayedTaskList
++w3e4_walk $la 4
+++set trace-commands off
+list=0x20000b04 uxNumberOfItems=0 pxIndex=0x20000b0c sentinel=0x20000b0c
+  visited=0 declared=0
++p/x pxOverflowDelayedTaskList
+$14 = 0x20000b18
++set $la = (unsigned int)pxOverflowDelayedTaskList
++w3e4_walk $la 4
+++set trace-commands off
+list=0x20000b18 uxNumberOfItems=0 pxIndex=0x20000b20 sentinel=0x20000b20
+  visited=0 declared=0
++x/5xw &xSuspendedTaskList
+0x20000b60 <xSuspendedTaskList>:	0x00000003	0x20000b68	0xffffffff	0x2000020c
+0x20000b70 <xSuspendedTaskList+16>:	0x200006c4
++set $la = (unsigned int)&xSuspendedTaskList
++w3e4_walk $la 4
+++set trace-commands off
+list=0x20000b60 uxNumberOfItems=3 pxIndex=0x20000b68 sentinel=0x20000b68
+  node=0x2000020c xItemValue=0 pvOwner=0x20000208 pvContainer=0x20000b60 -> task "Tmr Svc" uxPriority=7
+  node=0x20000920 xItemValue=0x64 pvOwner=0x2000091c pvContainer=0x20000b60 -> task "task_a" uxPriority=1
+  node=0x200006c4 xItemValue=0x78 pvOwner=0x200006c0 pvContainer=0x20000b60 -> task "task_b" uxPriority=1
+  visited=3 declared=3
++x/5xw &xPendingReadyList
+0x20000b34 <xPendingReadyList>:	0x00000000	0x20000b3c	0xffffffff	0x20000b3c
+0x20000b44 <xPendingReadyList+16>:	0x20000b3c
++set $la = (unsigned int)&xPendingReadyList
++w3e4_walk $la 24
+++set trace-commands off
+list=0x20000b34 uxNumberOfItems=0 pxIndex=0x20000b3c sentinel=0x20000b3c
+  visited=0 declared=0
++echo \n===== [L5] mutex: holder (+8), wait list (+36), uxMutexesHeld (+80 trong TCB) =====\n
+
+===== [L5] mutex: holder (+8), wait list (+36), uxMutexesHeld (+80 trong TCB) =====
++p/x s_mutex1
+$15 = 0x200009d0
++p/x s_mutex2
+$16 = 0x20000980
++p &((Queue_t *)0)->u.xSemaphore.xMutexHolder
+$17 = (TaskHandle_t *) 0x8
++p &((Queue_t *)0)->xTasksWaitingToReceive
+$18 = (List_t *) 0x24
++p &((TCB_t *)0)->uxMutexesHeld
+$19 = (UBaseType_t *) 0x50
++w3e4_mutex s_mutex1
+++set trace-commands off
+Queue_t=0x200009d0 : s_mutex1_storage in section .bss
+  pcHead(+0)=0 pcWriteTo(+4)=0x200009d0 xMutexHolder(+8)=0x2000091c uxRecursiveCallCount(+12)=0
+  uxMessagesWaiting(+56)=0 uxLength(+60)=1 uxItemSize(+64)=0 ucQueueType(+76)=1
+  (gdb) x/20xw 0x200009d0
+0x200009d0 <s_mutex1_storage>:	0x00000000	0x200009d0	0x2000091c	0x00000000
+0x200009e0 <s_mutex1_storage+16>:	0x00000000	0x200009e8	0xffffffff	0x200009e8
+0x200009f0 <s_mutex1_storage+32>:	0x200009e8	0x00000001	0x200009fc	0xffffffff
+0x20000a00 <s_mutex1_storage+48>:	0x200006d8	0x200006d8	0x00000000	0x00000001
+0x20000a10 <s_mutex1_storage+64>:	0x00000000	0x0001ffff	0x00000000	0x00000001
+  holder -> task "task_a" uxMutexesHeld=1
+  xTasksWaitingToReceive(+36):
+list=0x200009f4 uxNumberOfItems=1 pxIndex=0x200009fc sentinel=0x200009fc
+  node=0x200006d8 xItemValue=0x7 pvOwner=0x200006c0 pvContainer=0x200009f4 -> task "task_b" uxPriority=1
+  visited=1 declared=1
++w3e4_mutex s_mutex2
+++set trace-commands off
+Queue_t=0x20000980 : s_mutex2_storage in section .bss
+  pcHead(+0)=0 pcWriteTo(+4)=0x20000980 xMutexHolder(+8)=0x200006c0 uxRecursiveCallCount(+12)=0
+  uxMessagesWaiting(+56)=0 uxLength(+60)=1 uxItemSize(+64)=0 ucQueueType(+76)=1
+  (gdb) x/20xw 0x20000980
+0x20000980 <s_mutex2_storage>:	0x00000000	0x20000980	0x200006c0	0x00000000
+0x20000990 <s_mutex2_storage+16>:	0x00000000	0x20000998	0xffffffff	0x20000998
+0x200009a0 <s_mutex2_storage+32>:	0x20000998	0x00000001	0x200009ac	0xffffffff
+0x200009b0 <s_mutex2_storage+48>:	0x20000934	0x20000934	0x00000000	0x00000001
+0x200009c0 <s_mutex2_storage+64>:	0x00000000	0x0001ffff	0x00000000	0x00000001
+  holder -> task "task_b" uxMutexesHeld=1
+  xTasksWaitingToReceive(+36):
+list=0x200009a4 uxNumberOfItems=1 pxIndex=0x200009ac sentinel=0x200009ac
+  node=0x20000934 xItemValue=0x7 pvOwner=0x2000091c pvContainer=0x200009a4 -> task "task_a" uxPriority=1
+  visited=1 declared=1
++echo \n===== [L6] stack tung task: pxStack, pxTopOfStack, watermark 0xA5A5A5A5 =====\n
+
+===== [L6] stack tung task: pxStack, pxTopOfStack, watermark 0xA5A5A5A5 =====
++w3e4_task &s_task_a_tcb sizeof(s_task_a_stack)
+++set trace-commands off
+TCB=0x2000091c name="task_a" uxPriority=1 uxBasePriority=1 uxMutexesHeld=1
+  xStateListItem.pvContainer=0x20000b60 : xSuspendedTaskList in section .bss
+  xEventListItem.pvContainer=0x200009a4 : s_mutex2_storage + 36 in section .bss
+  pxStack=0x2000071c limit=0x2000091c pxTopOfStack=0x200008a0 con_trong_luc_luu_ngu_canh=388 byte
+  (gdb) x/16xw 0x2000071c
+0x2000071c <s_task_a_stack>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x2000072c <s_task_a_stack+16>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x2000073c <s_task_a_stack+32>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x2000074c <s_task_a_stack+48>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+  watermark: 94 word 0xA5A5A5A5 lien tuc tu day = 376 byte chua tung bi ghi
++w3e4_task &s_task_b_tcb sizeof(s_task_b_stack)
+++set trace-commands off
+TCB=0x200006c0 name="task_b" uxPriority=1 uxBasePriority=1 uxMutexesHeld=1
+  xStateListItem.pvContainer=0x20000b60 : xSuspendedTaskList in section .bss
+  xEventListItem.pvContainer=0x200009f4 : s_mutex1_storage + 36 in section .bss
+  pxStack=0x200004c0 limit=0x200006c0 pxTopOfStack=0x20000640 con_trong_luc_luu_ngu_canh=384 byte
+  (gdb) x/16xw 0x200004c0
+0x200004c0 <s_task_b_stack>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x200004d0 <s_task_b_stack+16>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x200004e0 <s_task_b_stack+32>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x200004f0 <s_task_b_stack+48>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+  watermark: 93 word 0xA5A5A5A5 lien tuc tu day = 372 byte chua tung bi ghi
++w3e4_task &s_idle_tcb sizeof(s_idle_stack)
+++set trace-commands off
+TCB=0x20000464 name="IDLE" uxPriority=0 uxBasePriority=0 uxMutexesHeld=0
+  xStateListItem.pvContainer=0x20000a64 : pxReadyTasksLists in section .bss
+  xEventListItem.pvContainer=0 : No symbol matches $t->xEventListItem.pvContainer.
+  pxStack=0x20000264 limit=0x20000464 pxTopOfStack=0x20000410 con_trong_luc_luu_ngu_canh=428 byte
+  (gdb) x/16xw 0x20000264
+0x20000264 <s_idle_stack>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x20000274 <s_idle_stack+16>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x20000284 <s_idle_stack+32>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x20000294 <s_idle_stack+48>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+  watermark: 110 word 0xA5A5A5A5 lien tuc tu day = 440 byte chua tung bi ghi
++w3e4_task &s_timer_tcb sizeof(s_timer_stack)
+++set trace-commands off
+TCB=0x20000208 name="Tmr Svc" uxPriority=7 uxBasePriority=7 uxMutexesHeld=0
+  xStateListItem.pvContainer=0x20000b60 : xSuspendedTaskList in section .bss
+  xEventListItem.pvContainer=0x20000c40 : xStaticTimerQueue.0 + 36 in section .bss
+  pxStack=0x20000008 limit=0x20000208 pxTopOfStack=0x20000190 con_trong_luc_luu_ngu_canh=392 byte
+  (gdb) x/16xw 0x20000008
+0x20000008 <s_timer_stack>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x20000018 <s_timer_stack+16>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x20000028 <s_timer_stack+32>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+0x20000038 <s_timer_stack+48>:	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5	0xa5a5a5a5
+  watermark: 83 word 0xA5A5A5A5 lien tuc tu day = 332 byte chua tung bi ghi
++p xNumOfOverflows
+$20 = 0
++echo \n===== [L7] ICSR, NVIC, SHPR, BASEPRI, nguong syscall =====\n
+
+===== [L7] ICSR, NVIC, SHPR, BASEPRI, nguong syscall =====
++if $_isvoid($w3e4_offline)
+++x/xw 0xE000ED04
+0xe000ed04:	0x00000000
+++p/u (*(unsigned int *)0xE000ED04) & 0x1ff
+$21 = 0
+++x/2xw 0xE000E100
+0xe000e100:	0x00000000	0x00000000
+++x/32bx 0xE000E400
+0xe000e400:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xe000e408:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xe000e410:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xe000e418:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+++x/28bx 0xE000E420
+0xe000e420:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xe000e428:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xe000e430:	0x00	0x00	0x00	0x00	0x00	0x00	0x00	0x00
+0xe000e438:	0x00	0x00	0x00	0x00
+++x/3xw 0xE000ED18
+0xe000ed18:	0x00000000	0x00000000	0xf0f00000
+++x/xw 0xE000ED0C
+0xe000ed0c:	0xfa050300
+++p/x $basepri
+$22 = 0x0
+++p/x $primask
+$23 = 0x0
+++p/x $xpsr
+$24 = 0x61000000
+++x/xw 0xE000ED28
+0xe000ed28:	0x00000000
+++x/xw 0xE000ED2C
+0xe000ed2c:	0x00000000
++p/x ucMaxSysCallPriority
+$25 = 0x50
++p/x ulMaxPRIGROUPValue
+$26 = 0x300
++info functions FromISR
+All functions matching regular expression "FromISR":
++p sizeof(g_vector_table) / 4
+$27 = 59
++x/59xw &g_vector_table
+0x8000000 <g_vector_table>:	0x20005000	0x080003e5	0x080003e1	0x080003e1
+0x8000010 <g_vector_table+16>:	0x080003e1	0x080003e1	0x080003e1	0x00000000
+0x8000020 <g_vector_table+32>:	0x00000000	0x00000000	0x00000000	0x08002a01
+0x8000030 <g_vector_table+48>:	0x080003e1	0x00000000	0x08002c11	0x08002c59
+0x8000040 <g_vector_table+64>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x8000050 <g_vector_table+80>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x8000060 <g_vector_table+96>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x8000070 <g_vector_table+112>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x8000080 <g_vector_table+128>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x8000090 <g_vector_table+144>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x80000a0 <g_vector_table+160>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x80000b0 <g_vector_table+176>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x80000c0 <g_vector_table+192>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x80000d0 <g_vector_table+208>:	0x080003e1	0x080003e1	0x080003e1	0x080003e1
+0x80000e0 <g_vector_table+224>:	0x080003e1	0x080003e1	0x080003e1
++p/x &Default_Handler
+$28 = 0x80003e0
++p/x &HardFault_Handler
+$29 = 0x80003e0
++echo \n===== [S1] anh chup ngan, lan halt 1 =====\n
+
+===== [S1] anh chup ngan, lan halt 1 =====
++w3e4_brief
+++p xTickCount
+$30 = 2033
+++p/x $pc
+$31 = 0x8001cf0
+++if pxCurrentTCB != 0
++++p pxCurrentTCB->pcTaskName
+$32 = "IDLE", '\000' <repeats 11 times>
+++p/x ((TCB_t *)&s_task_a_tcb)->pxTopOfStack
+$33 = 0x200008a0
+++p/x ((TCB_t *)&s_task_b_tcb)->pxTopOfStack
+$34 = 0x20000640
+++if s_mutex1 != 0
++++p/x ((Queue_t *)s_mutex1)->u.xSemaphore.xMutexHolder
+$35 = 0x2000091c
++++p ((Queue_t *)s_mutex1)->xTasksWaitingToReceive.uxNumberOfItems
+$36 = 1
+++if s_mutex2 != 0
++++p/x ((Queue_t *)s_mutex2)->u.xSemaphore.xMutexHolder
+$37 = 0x200006c0
++++p ((Queue_t *)s_mutex2)->xTasksWaitingToReceive.uxNumberOfItems
+$38 = 1
+++p xSuspendedTaskList.uxNumberOfItems
+$39 = 3
++if $_isvoid($w3e4_offline)
+++monitor resume
+++eval "monitor sleep %d", $run_ms
+++monitor sleep 2000
+++monitor halt
+[stm32f1x.cpu] halted due to debug-request, current mode: Thread 
+xPSR: 0x61000000 pc: 0x08001c48 psp: 0x20000450
+++maintenance flush register-cache
+++echo \n===== [S2] anh chup ngan, lan halt 2 (sau them $run_ms ms) =====\n
+
+===== [S2] anh chup ngan, lan halt 2 (sau them $run_ms ms) =====
+++p $run_ms
+$40 = 2000
+++w3e4_brief
++++p xTickCount
+$41 = 4049
++++p/x $pc
+$42 = 0x8001c48
++++if pxCurrentTCB != 0
+++++p pxCurrentTCB->pcTaskName
+$43 = "IDLE", '\000' <repeats 11 times>
++++p/x ((TCB_t *)&s_task_a_tcb)->pxTopOfStack
+$44 = 0x200008a0
++++p/x ((TCB_t *)&s_task_b_tcb)->pxTopOfStack
+$45 = 0x20000640
++++if s_mutex1 != 0
+++++p/x ((Queue_t *)s_mutex1)->u.xSemaphore.xMutexHolder
+$46 = 0x2000091c
+++++p ((Queue_t *)s_mutex1)->xTasksWaitingToReceive.uxNumberOfItems
+$47 = 1
++++if s_mutex2 != 0
+++++p/x ((Queue_t *)s_mutex2)->u.xSemaphore.xMutexHolder
+$48 = 0x200006c0
+++++p ((Queue_t *)s_mutex2)->xTasksWaitingToReceive.uxNumberOfItems
+$49 = 1
++++p xSuspendedTaskList.uxNumberOfItems
+$50 = 3
+++set trace-commands off
