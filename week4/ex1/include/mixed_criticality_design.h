@@ -69,10 +69,11 @@ typedef struct {
 /* Summary design constants (Single Source of Truth for W4.1 -> W4.4). */
 #define W4E1_DESIGN_RAM_USED_BYTES       11904UL
 #define W4E1_DESIGN_RAM_MARGIN_BYTES     (W4E1_RAM_BUDGET_BYTES - W4E1_DESIGN_RAM_USED_BYTES)
-#define W4E1_DESIGN_CPU_LO_PERCENT       17UL
-#define W4E1_DESIGN_CPU_WC_PERCENT       25UL
-#define W4E1_DESIGN_CPU_TOTAL_WC_PERCENT 27UL
-#define W4E1_DESIGN_CONTROL_JITTER_US    90UL
+#define W4E1_DESIGN_CPU_LO_PERCENT       17UL  /* 16.89 % (5 tasks at C_LO), rounded up */
+#define W4E1_DESIGN_CPU_WC_PERCENT       26UL  /* 25.59 % (5 tasks at C_HI), rounded up */
+#define W4E1_DESIGN_CPU_TOTAL_WC_PERCENT 28UL  /* 27.70 % incl. 2.11 % ISR background */
+#define W4E1_DESIGN_CONTROL_JITTER_US    97UL  /* = R_HI(control) <= 113 us, margin 16 us */
+#define W4E1_DESIGN_JITTER_ALARM_US      100UL /* CPU_OVERLOAD early-warning, < 113 us hard limit */
 #define W4E1_NUM_RAM_BUDGET_ENTRIES      18U
 #define W4E1_NUM_FAILURE_MODE_ENTRIES    4U
 
@@ -80,14 +81,16 @@ typedef struct {
  * control=8, imu=7, telemetry=5, shell=3, idle_aux=2).
  * LO-mode nominal R_i: {70, 210, 390, 810, 1130} us.
  * HI-stress worst-case R_i (with I2C1 recovery & ISR overhead):
- * {90, 350, 530, 950, 1290} us. Every R_i <= D_i and R_control <= 113 us. */
+ * {97, 357, 537, 957, 1304} us. Every R_i <= D_i and R_control <= 113 us.
+ * C_HI(control) = C_LO 70 + stale/safe-hold branch 11 + one peripheral ISR
+ * preemption 16 = 97 us. */
 static const w4e1_rta_entry_t W4E1_UNUSED W4E1_RTA_TABLE[W4E1_NUM_ROLES] = {
   /* role,                period_us, deadline_us, wcet_us, response_time_us, priority */
-  { W4E1_ROLE_CONTROL,       1000UL,      1000UL,    90UL,             90UL,      8UL },
-  { W4E1_ROLE_IMU,           2000UL,      2000UL,   260UL,            350UL,      7UL },
-  { W4E1_ROLE_TELEMETRY,    10000UL,     10000UL,   180UL,            530UL,      5UL },
-  { W4E1_ROLE_SHELL,        50000UL,    200000UL,   420UL,            950UL,      3UL },
-  { W4E1_ROLE_IDLE_AUX,    100000UL,    100000UL,   250UL,           1290UL,      2UL }
+  { W4E1_ROLE_CONTROL,       1000UL,      1000UL,    97UL,             97UL,      8UL },
+  { W4E1_ROLE_IMU,           2000UL,      2000UL,   260UL,            357UL,      7UL },
+  { W4E1_ROLE_TELEMETRY,    10000UL,     10000UL,   180UL,            537UL,      5UL },
+  { W4E1_ROLE_SHELL,        50000UL,    200000UL,   420UL,            957UL,      3UL },
+  { W4E1_ROLE_IDLE_AUX,    100000UL,    100000UL,   250UL,           1304UL,      2UL }
 };
 
 /* Official 100% Static-RAM budget table: sum = 11,904 bytes <= 15,684 bytes
@@ -130,12 +133,12 @@ W4E1_FAILURE_MODE_TABLE[W4E1_NUM_FAILURE_MODE_ENTRIES] = {
   },
   {
     "CPU Time & TIM3 1kHz Jitter Budget (CPU_OVERLOAD)",
-    "DWT cycle monitor sees control jitter > 113 us, WCRT > +12% RTA, or TIM2 100kHz runtime stats total CPU > 76%",
+    "DWT cycle monitor sees control jitter > 100 us (alarm before the 113 us limit), WCRT > +12% RTA, or TIM2 100kHz runtime stats total CPU > 76%",
     "Enter HI-Criticality mode: shed LO-criticality tasks (suspend telemetry & shell, lock out STOP mode in idle_aux) to protect control & imu"
   },
   {
     "Task Liveness & Shared Static RAM (TASK_HANG)",
-    "EventGroup heartbeat mask incomplete within 100 ms window, stack high-water mark < 23 words, or HardFault/IWDG (> 296 ms)",
+    "EventGroup heartbeat mask (active roles only; shed roles masked out in HI mode) incomplete within 100 ms window, stack high-water mark < 23 words, or HardFault/IWDG (> 296 ms)",
     "Log hung role ID, PC/LR/CFSR and reset reason into .noinit post-mortem record (canary 0x6C217697), trigger IWDG/NVIC reset within 296 ms"
   }
 };
