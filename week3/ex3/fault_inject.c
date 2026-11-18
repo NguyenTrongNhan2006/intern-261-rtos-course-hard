@@ -4,12 +4,13 @@
 #include <stdint.h>
 #include <string.h>
 
+// Tạo Lỗi 
 /* STEP 1: Địa chỉ đích nằm trong biến volatile, nên GCC không biết trước giá trị là NULL
  * hay lệch căn, không báo lỗi biên dịch (-Werror) và không xóa lệnh như hành vi không
  * xác định. Mỗi hàm gây lỗi là noinline để addr2line trả đúng tên hàm và dòng. */
-static volatile uintptr_t s_null_address = 0u;
+static volatile uintptr_t s_null_address = 0u; // tham chiếu NULL 
 static volatile uintptr_t s_jump_address;
-static volatile uint32_t s_sink;
+static volatile uint32_t s_sink;  // Cái "thùng rác" hứng dữ liệu đọc
 static uint32_t s_words[2];
 
 /* Đích nhảy hợp lệ, nhưng được gọi với bit Thumb = 0 nên không bao giờ thực thi. */
@@ -17,7 +18,7 @@ __attribute__((noinline)) static void fault_jump_landing(void)
 {
     s_sink = 0x1A2B3C4Du;
 }
-
+// 4 hàm tạo lỗi khác nhau, mỗi hàm là một kiểu lỗi khác nhau.
 /* STEP 2: NULL_DEREF_WRITE. STR vào 0x0 là bí danh Flash khi chưa bật lập trình. */
 __attribute__((noinline)) static void inject_null_write(void)
 {

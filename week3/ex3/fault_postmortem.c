@@ -29,7 +29,7 @@ _Static_assert(offsetof(fault_record_t, checksum) + 4u == sizeof(fault_record_t)
 
 /* STEP 1: Bản ghi nằm trong .noinit. Linker script đặt section này NOLOAD sau .bss,
  * và Reset_Handler chỉ xóa _sbss.._ebss nên reset mềm không chạm vào bản ghi. */
-static fault_record_t s_record __attribute__((section(".noinit"), aligned(4)));
+static fault_record_t s_record __attribute__((section(".noinit"), aligned(4))); 
 
 void hardfault_c_handler(const uint32_t *sp, uint32_t exc_return) __attribute__((used, noreturn));
 void debugmon_c_handler(const uint32_t *sp, uint32_t exc_return) __attribute__((used));

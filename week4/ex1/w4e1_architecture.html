@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>W4.1 Mixed-Criticality System Architecture (MSSV: 2452882)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 24px;
+      margin-bottom: 18px;
+    }
+    header h1 { font-size: 1.35rem; color: var(--accent); }
+    header .meta { font-family: Consolas, monospace; font-size: 0.9rem; color: var(--muted); }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    button {
+      background: #0284c7;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button:hover { background: #0369a1; }
+    .canvas-wrap {
+      background: #ffffff;
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      height: 680px;
+      position: relative;
+      cursor: grab;
+      margin-bottom: 20px;
+    }
+    .canvas-wrap:active { cursor: grabbing; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: Consolas, monospace;
+      font-size: 0.85rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 7px 10px;
+      text-align: left;
+    }
+    th { background: #0f172a; color: var(--accent); }
+    tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+    .badge-hi { background: #991b1b; color: #fecaca; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    .badge-lo { background: #1e40af; color: #bfdbfe; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+    .pass { color: #4ade80; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>W4.1 – Kiến trúc Hệ thống Mixed-Criticality & Luồng Dữ liệu IPC</h1>
+      <div class="meta">MSSV: 2452882 | STM32F103C8T6 @ 72 MHz | Jitter &le; 113 &mu;s | Static RAM: 11,904 / 15,684 B (75.90%) | CPU: 27.00% / 76%</div>
+    </div>
+    <div class="toolbar">
+      <button onclick="zoom(1.15)">Zoom In (+)</button>
+      <button onclick="zoom(0.87)">Zoom Out (-)</button>
+      <button onclick="resetView()">Reset View (100%)</button>
+    </div>
+  </header>
+
+  <div class="canvas-wrap" id="viewport">
+    <svg id="arch-svg" width="1440" height="800" viewBox="0 0 1440 800" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1 L 10 5 L 0 9 z" fill="#334155"/>
+        </marker>
+        <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+          <feDropShadow dx="1" dy="2" stdDeviation="2" flood-opacity="0.18"/>
+        </filter>
+      </defs>
+      <g id="pan-zoom-group">
+      <rect x="30" y="20" width="1340" height="145" rx="10" fill="#FFFDE7" stroke="#FBC02D" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.7"/>
+      <text x="44" y="40" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#FBC02D">TIER 1: HARDWARE TIMERS &amp; INTERRUPT SERVICE ROUTINES (NVIC PRIORITY 5..9 &lt; configMAX_SYSCALL_INTERRUPT_PRIORITY)</text>
+      <rect x="30" y="195" width="1340" height="175" rx="10" fill="#FFEBEE" stroke="#E53935" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.7"/>
+      <text x="44" y="215" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#E53935">TIER 2: HI-CRITICALITY REAL-TIME TASKS (PROTECTED IN BOTH LO-MODE &amp; HI-MODE | JITTER &lt;= 113 us)</text>
+      <rect x="30" y="400" width="1390" height="155" rx="10" fill="#E8F5E9" stroke="#43A047" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.7"/>
+      <text x="44" y="420" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#43A047">TIER 3: 100% STATIC IPC &amp; SHARED STATE (LOCK-FREE SPSC RING, STREAM BUFFER, EVENT GROUP, .NOINIT)</text>
+      <rect x="30" y="595" width="1340" height="175" rx="10" fill="#E3F2FD" stroke="#1E88E5" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.7"/>
+      <text x="44" y="615" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#1E88E5">TIER 4: LO-CRITICALITY TASKS (SHED / THROTTLED DURING HI-CRITICALITY DEGRADED MODE)</text>
+      <path d="M 185.0 145.0 C 185.0 176.5, 215.0 176.5, 215.0 230.0" fill="none" stroke="#C62828" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="100.8" y="167.5" width="206.4" height="16" rx="4" fill="#FFFFFF" stroke="#C62828" stroke-width="0.8" opacity="0.92"/>
+      <text x="204.0" y="179.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#C62828">vTaskNotifyGiveFromISR() (1 kHz)</text>
+      <path d="M 490.0 145.0 C 490.0 187.5, 580.0 187.5, 580.0 230.0" fill="none" stroke="#E65100" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="407.9" y="178.5" width="262.2" height="16" rx="4" fill="#FFFFFF" stroke="#E65100" stroke-width="0.8" opacity="0.92"/>
+      <text x="539.0" y="190.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#E65100">xTaskNotifyFromISR() (EV/ER/Timeout 28ms)</text>
+      <path d="M 580.0 350.0 C 580.0 401.0, 215.0 401.0, 215.0 430.0" fill="none" stroke="#2E7D32" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="304.5" y="392.0" width="194.0" height="16" rx="4" fill="#FFFFFF" stroke="#2E7D32" stroke-width="0.8" opacity="0.92"/>
+      <text x="401.5" y="404.0" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#2E7D32">spsc_push() + __DMB() (500 Hz)</text>
+      <path d="M 215.0 430.0 C 215.0 379.0, 215.0 379.0, 215.0 350.0" fill="none" stroke="#C62828" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="115.8" y="370.0" width="206.4" height="16" rx="4" fill="#FFFFFF" stroke="#C62828" stroke-width="0.8" opacity="0.92"/>
+      <text x="219.0" y="382.0" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#C62828">spsc_read_latest() (0-Lock, B=0)</text>
+      <path d="M 215.0 350.0 C 215.0 390.0, 575.0 390.0, 575.0 430.0" fill="none" stroke="#C62828" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+      <rect x="292.7" y="381.0" width="212.6" height="16" rx="4" fill="#FFFFFF" stroke="#C62828" stroke-width="0.8" opacity="0.92"/>
+      <text x="399.0" y="393.0" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#C62828">Write overrun_cnt / imu_stale_cnt</text>
+      <path d="M 580.0 350.0 C 580.0 401.0, 575.0 401.0, 575.0 430.0" fill="none" stroke="#E65100" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+      <rect x="478.3" y="392.0" width="206.4" height="16" rx="4" fill="#FFFFFF" stroke="#E65100" stroke-width="0.8" opacity="0.92"/>
+      <text x="581.5" y="404.0" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#E65100">Static Mutex (I2C1 Bus Recovery)</text>
+      <path d="M 575.0 535.0 C 575.0 571.5, 380.0 571.5, 380.0 630.0" fill="none" stroke="#1565C0" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="390.7" y="562.5" width="181.6" height="16" rx="4" fill="#FFFFFF" stroke="#1565C0" stroke-width="0.8" opacity="0.92"/>
+      <text x="481.5" y="574.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#1565C0">Read Snapshot (Status + IMU)</text>
+      <path d="M 380.0 630.0 C 380.0 387.5, 810.0 387.5, 810.0 145.0" fill="none" stroke="#1565C0" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="508.2" y="378.5" width="181.6" height="16" rx="4" fill="#FFFFFF" stroke="#1565C0" stroke-width="0.8" opacity="0.92"/>
+      <text x="599.0" y="390.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#1565C0">DMA1_Ch4 TX (1 Mbps, 2x128B)</text>
+      <path d="M 810.0 145.0 C 810.0 298.5, 915.0 298.5, 915.0 430.0" fill="none" stroke="#F57F17" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="747.8" y="289.5" width="237.4" height="16" rx="4" fill="#FFFFFF" stroke="#F57F17" stroke-width="0.8" opacity="0.92"/>
+      <text x="866.5" y="301.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#F57F17">xStreamBufferSendFromISR() (DMA1_Ch5)</text>
+      <path d="M 915.0 535.0 C 915.0 571.5, 780.0 571.5, 780.0 630.0" fill="none" stroke="#1565C0" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="739.0" y="562.5" width="225.0" height="16" rx="4" fill="#FFFFFF" stroke="#1565C0" stroke-width="0.8" opacity="0.92"/>
+      <text x="851.5" y="574.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#1565C0">xStreamBufferReceive() (Trigger=1B)</text>
+      <path d="M 780.0 630.0 C 780.0 582.5, 575.0 582.5, 575.0 535.0" fill="none" stroke="#1565C0" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+      <rect x="553.5" y="573.5" width="256.0" height="16" rx="4" fill="#FFFFFF" stroke="#1565C0" stroke-width="0.8" opacity="0.92"/>
+      <text x="681.5" y="585.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#1565C0">Tune telemetry_period_ms (Timeout 200ms)</text>
+      <path d="M 215.0 350.0 C 215.0 401.0, 1245.0 401.0, 1245.0 430.0" fill="none" stroke="#2E7D32" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+      <rect x="624.6" y="392.0" width="218.8" height="16" rx="4" fill="#FFFFFF" stroke="#2E7D32" stroke-width="0.8" opacity="0.92"/>
+      <text x="734.0" y="404.0" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#2E7D32">Set Heartbeat Bit 0 / Jitter Alert</text>
+      <path d="M 580.0 350.0 C 580.0 379.0, 1245.0 379.0, 1245.0 430.0" fill="none" stroke="#2E7D32" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+      <rect x="804.0" y="370.0" width="225.0" height="16" rx="4" fill="#FFFFFF" stroke="#2E7D32" stroke-width="0.8" opacity="0.92"/>
+      <text x="916.5" y="382.0" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#2E7D32">Set Heartbeat Bit 1 / SENSOR_UNPLUG</text>
+      <path d="M 380.0 630.0 C 380.0 582.5, 1245.0 582.5, 1245.0 535.0" fill="none" stroke="#2E7D32" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+      <rect x="753.6" y="573.5" width="125.8" height="16" rx="4" fill="#FFFFFF" stroke="#2E7D32" stroke-width="0.8" opacity="0.92"/>
+      <text x="816.5" y="585.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#2E7D32">Set Heartbeat Bit 2</text>
+      <path d="M 780.0 630.0 C 780.0 593.5, 1245.0 593.5, 1245.0 535.0" fill="none" stroke="#2E7D32" stroke-width="2" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+      <rect x="907.1" y="584.5" width="218.8" height="16" rx="4" fill="#FFFFFF" stroke="#2E7D32" stroke-width="0.8" opacity="0.92"/>
+      <text x="1016.5" y="596.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#2E7D32">Set Heartbeat Bit 3 / Fault Inject</text>
+      <path d="M 1245.0 535.0 C 1245.0 571.5, 1185.0 571.5, 1185.0 630.0" fill="none" stroke="#0D47A1" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="1106.5" y="562.5" width="225.0" height="16" rx="4" fill="#FFFFFF" stroke="#0D47A1" stroke-width="0.8" opacity="0.92"/>
+      <text x="1219.0" y="574.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#0D47A1">xEventGroupWaitBits() &amp; Mode Switch</text>
+      <path d="M 1135.0 145.0 C 1135.0 387.5, 1185.0 387.5, 1185.0 630.0" fill="none" stroke="#F57F17" stroke-width="2"  marker-end="url(#arrow)"/>
+      <rect x="1054.6" y="378.5" width="218.8" height="16" rx="4" fill="#FFFFFF" stroke="#F57F17" stroke-width="0.8" opacity="0.92"/>
+      <text x="1164.0" y="390.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#F57F17">TIM2 100kHz Stats &amp; RTC Sleep Gate</text>
+      <path d="M 1185.0 630.0 C 1185.0 398.5, 1135.0 398.5, 1135.0 145.0" fill="none" stroke="#0D47A1" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow)"/>
+      <rect x="1054.6" y="389.5" width="218.8" height="16" rx="4" fill="#FFFFFF" stroke="#0D47A1" stroke-width="0.8" opacity="0.92"/>
+      <text x="1164.0" y="401.5" text-anchor="middle" font-family="Consolas, monospace" font-size="10" font-weight="bold" fill="#0D47A1">Feed IWDG (&lt;296ms) / Write .noinit</text>
+      <rect x="60" y="50" width="250" height="95" rx="12" fill="#FFF59D" stroke="#F57F17" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="185.0" y="72" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#3E2723">TIM3_IRQHandler (1 kHz Trigger)</text>
+      <line x1="70" y1="78" x2="300" y2="78" stroke="#F57F17" stroke-width="1" opacity="0.5"/>
+      <text x="72" y="95" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">NVIC Prio: 5 (Highest Managed)</text>
+      <text x="72" y="111" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">T = 1000 us | C_ISR = 4 us</text>
+      <text x="72" y="127" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">Trigger: TIM3 CCR1 Compare</text>
+      <rect x="360" y="50" width="260" height="95" rx="12" fill="#FFF59D" stroke="#F57F17" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="490.0" y="72" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#3E2723">I2C1_EV / I2C1_ER ISR (W2.1)</text>
+      <line x1="370" y1="78" x2="610" y2="78" stroke="#F57F17" stroke-width="1" opacity="0.5"/>
+      <text x="372" y="95" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">NVIC Prio: 6 | 500 Hz Burst</text>
+      <text x="372" y="111" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">EV5..EV8_2 / ER (AF, BERR, ARLO)</text>
+      <text x="372" y="127" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">C_ISR &lt;= 35 us | 0 spin-wait in ISR</text>
+      <rect x="670" y="50" width="280" height="95" rx="12" fill="#FFF59D" stroke="#F57F17" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="810.0" y="72" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#3E2723">USART1 IDLE + DMA1 Ch4/5 ISR (W3.1)</text>
+      <line x1="680" y1="78" x2="940" y2="78" stroke="#F57F17" stroke-width="1" opacity="0.5"/>
+      <text x="682" y="95" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">NVIC Prio: 7 | Baud: 1,000,000 bps</text>
+      <text x="682" y="111" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">Ch5 Circular RX (256B) + Ch4 PingPong TX</text>
+      <text x="682" y="127" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">C_ISR &lt;= 16 us | Flood Cooldown Mask</text>
+      <rect x="1000" y="50" width="270" height="95" rx="12" fill="#FFF59D" stroke="#F57F17" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="1135.0" y="72" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#3E2723">TIM2 (100 kHz) + RTC Wake + IWDG</text>
+      <line x1="1010" y1="78" x2="1260" y2="78" stroke="#F57F17" stroke-width="1" opacity="0.5"/>
+      <text x="1012" y="95" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">NVIC Prio: 8..9 | W3.1 &amp; W3.2 &amp; W4.3</text>
+      <text x="1012" y="111" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">TIM2: RunTimeStats | RTC LSI ~40.1 kHz</text>
+      <text x="1012" y="127" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">IWDG Timeout: 296 ms (Hardware Reset)</text>
+      <rect x="60" y="230" width="310" height="120" rx="6" fill="#FFCDD2" stroke="#C62828" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="215.0" y="252" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#4A0E0E">ROLE 0: control [HI-CRITICALITY]</text>
+      <line x1="70" y1="258" x2="360" y2="258" stroke="#C62828" stroke-width="1" opacity="0.5"/>
+      <text x="72" y="275" font-family="Consolas, monospace" font-size="10.5" fill="#4A0E0E">Prio: 8 (Highest) | T = 1000 us | D = 1000 us</text>
+      <text x="72" y="291" font-family="Consolas, monospace" font-size="10.5" fill="#4A0E0E">C_LO = 70 us | C_HI = 90 us</text>
+      <text x="72" y="307" font-family="Consolas, monospace" font-size="10.5" fill="#4A0E0E">R_LO = 70 us | R_HI = 90 us (&lt;= 113 us Jitter)</text>
+      <text x="72" y="323" font-family="Consolas, monospace" font-size="10.5" fill="#4A0E0E">Stack: 192 words (768 B) | U_HI = 9.00%</text>
+      <rect x="420" y="230" width="320" height="120" rx="6" fill="#FFE0B2" stroke="#E65100" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="580.0" y="252" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#3E2723">ROLE 1: imu (MPU6050) [HI-CRITICALITY]</text>
+      <line x1="430" y1="258" x2="730" y2="258" stroke="#E65100" stroke-width="1" opacity="0.5"/>
+      <text x="432" y="275" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">Prio: 7 | T = 2000 us (500 Hz) | D = 2000 us</text>
+      <text x="432" y="291" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">C_LO = 140 us | C_HI = 260 us (w/ 9-SCL Recovery)</text>
+      <text x="432" y="307" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">R_LO = 210 us | R_HI = 350 us (Margin: 1650 us)</text>
+      <text x="432" y="323" font-family="Consolas, monospace" font-size="10.5" fill="#3E2723">Stack: 192 words (768 B) | U_HI = 13.00%</text>
+      <rect x="60" y="430" width="310" height="105" rx="20" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="215.0" y="452" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#1B5E20">IPC: IMU Lock-Free SPSC Ring (W2.2)</text>
+      <line x1="70" y1="458" x2="360" y2="458" stroke="#2E7D32" stroke-width="1" opacity="0.5"/>
+      <text x="72" y="475" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">w4e2_imu_sample_t (accel_g[3], gyro_dps[3], tick)</text>
+      <text x="72" y="491" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">16 slots x 32 B = 512 B | __DMB() Memory Barrier</text>
+      <text x="72" y="507" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">WCET: 53 cycles (~0.74 us) | Blocking B = 0 us</text>
+      <rect x="420" y="430" width="310" height="105" rx="20" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="575.0" y="452" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#1B5E20">IPC: Atomic System Status &amp; I2C1 Mutex</text>
+      <line x1="430" y1="458" x2="720" y2="458" stroke="#2E7D32" stroke-width="1" opacity="0.5"/>
+      <text x="432" y="475" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">w4e2_system_status_t (telemetry_period_ms,</text>
+      <text x="432" y="491" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">control_overrun_count, imu_stale_count)</text>
+      <text x="432" y="507" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">StaticSemaphore_t (2x80 B) | Zero Blocking on CTRL</text>
+      <rect x="770" y="430" width="290" height="105" rx="20" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="915.0" y="452" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#1B5E20">IPC: USART1 RX StaticStreamBuffer (W3.1)</text>
+      <line x1="780" y1="458" x2="1050" y2="458" stroke="#2E7D32" stroke-width="1" opacity="0.5"/>
+      <text x="782" y="475" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">Storage: 512 B (511 B usable) + CB: 80 B</text>
+      <text x="782" y="491" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">Trigger Level: 1 B | SPSC ISR -&gt; shell</text>
+      <text x="782" y="507" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">Drop Detection -&gt; Triggers UART_FLOOD Mode Switch</text>
+      <rect x="1090" y="430" width="310" height="105" rx="20" fill="#C8E6C9" stroke="#2E7D32" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="1245.0" y="452" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#1B5E20">IPC: StaticEventGroup + .noinit (W3.3)</text>
+      <line x1="1100" y1="458" x2="1390" y2="458" stroke="#2E7D32" stroke-width="1" opacity="0.5"/>
+      <text x="1102" y="475" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">BIT_DEGRADED_MODE (1&lt;&lt;0) | BIT_WDG_RECOVERED (1&lt;&lt;1)</text>
+      <text x="1102" y="491" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">5-Bit Task Heartbeat Mask (Checked every 100 ms)</text>
+      <text x="1102" y="507" font-family="Consolas, monospace" font-size="10.5" fill="#1B5E20">.noinit Record: 128 B (Canary 0x6C217697 + FNV-1a)</text>
+      <rect x="220" y="630" width="320" height="120" rx="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="380.0" y="652" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#0D47A1">ROLE 2: telemetry [LO-CRITICALITY]</text>
+      <line x1="230" y1="658" x2="530" y2="658" stroke="#1565C0" stroke-width="1" opacity="0.5"/>
+      <text x="232" y="675" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">Prio: 5 | T = 10000 us (100 Hz) | D = 10000 us</text>
+      <text x="232" y="691" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">C_LO = 180 us (CRC32 + DMA1_Ch4 TX @ 1 Mbps)</text>
+      <text x="232" y="707" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">R_LO = 390 us | R_HI = 530 us | U = 1.80%</text>
+      <text x="232" y="723" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">Stack: 192 words (768 B) | HI-Mode: Shed / 10 Hz</text>
+      <rect x="620" y="630" width="320" height="120" rx="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="780.0" y="652" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#0D47A1">ROLE 3: shell [LO-CRITICALITY]</text>
+      <line x1="630" y1="658" x2="930" y2="658" stroke="#1565C0" stroke-width="1" opacity="0.5"/>
+      <text x="632" y="675" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">Prio: 3 | Sporadic T_min = 50 ms | D = 200 ms</text>
+      <text x="632" y="691" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">C_LO = 420 us (Frame Parser + Cmd Exec)</text>
+      <text x="632" y="707" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">R_LO = 810 us | R_HI = 950 us | U = 0.84%</text>
+      <text x="632" y="723" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">Stack: 256 words (1024 B) | HI-Mode: Suspended</text>
+      <rect x="1020" y="630" width="330" height="120" rx="6" fill="#BBDEFB" stroke="#1565C0" stroke-width="2.5" filter="url(#shadow)"/>
+      <text x="1185.0" y="652" text-anchor="middle" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#0D47A1">ROLE 4: idle_aux [LO-CRITICALITY]</text>
+      <line x1="1030" y1="658" x2="1340" y2="658" stroke="#1565C0" stroke-width="1" opacity="0.5"/>
+      <text x="1032" y="675" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">Prio: 2 | T = 100000 us (10 Hz) | D = 100000 us</text>
+      <text x="1032" y="691" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">C_LO = 250 us | C_HI = 80 us (Stats + IWDG + Sleep)</text>
+      <text x="1032" y="707" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">R_LO = 1130 us | R_HI = 1290 us | U = 0.25%</text>
+      <text x="1032" y="723" font-family="Consolas, monospace" font-size="10.5" fill="#0D47A1">Stack: 192 words (768 B) | HI-Mode: Lock STOP Mode</text>
+      </g>
+    </svg>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h2>1. Bảng Tổng hợp RTA (Khớp 100% W4E1_RTA_TABLE trong mixed_criticality_design.h)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Crit</th>
+            <th>Prio</th>
+            <th>T (&mu;s)</th>
+            <th>D (&mu;s)</th>
+            <th>C_LO (&mu;s)</th>
+            <th>R_LO (&mu;s)</th>
+            <th>C_HI (&mu;s)</th>
+            <th>R_HI (&mu;s)</th>
+            <th>Margin (&mu;s)</th>
+            <th>U_HI (%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>control</b></td>
+            <td><span class="badge-hi">HI</span></td>
+            <td>8</td>
+            <td>1,000</td>
+            <td>1,000</td>
+            <td>70</td>
+            <td>70</td>
+            <td><b>90</b></td>
+            <td class="pass">90 (&le;113)</td>
+            <td>910 (J: 23)</td>
+            <td>9.00%</td>
+          </tr>
+          <tr>
+            <td><b>imu</b></td>
+            <td><span class="badge-hi">HI</span></td>
+            <td>7</td>
+            <td>2,000</td>
+            <td>2,000</td>
+            <td>140</td>
+            <td>210</td>
+            <td><b>260</b></td>
+            <td class="pass">350</td>
+            <td>1,650</td>
+            <td>13.00%</td>
+          </tr>
+          <tr>
+            <td><b>telemetry</b></td>
+            <td><span class="badge-lo">LO</span></td>
+            <td>5</td>
+            <td>10,000</td>
+            <td>10,000</td>
+            <td>180</td>
+            <td>390</td>
+            <td><b>180</b> (Shed: 0)</td>
+            <td class="pass">530</td>
+            <td>9,470</td>
+            <td>1.80%</td>
+          </tr>
+          <tr>
+            <td><b>shell</b></td>
+            <td><span class="badge-lo">LO</span></td>
+            <td>3</td>
+            <td>50,000</td>
+            <td>200,000</td>
+            <td>420</td>
+            <td>810</td>
+            <td><b>420</b> (Shed: 0)</td>
+            <td class="pass">950</td>
+            <td>199,050</td>
+            <td>0.84%</td>
+          </tr>
+          <tr>
+            <td><b>idle_aux</b></td>
+            <td><span class="badge-lo">LO</span></td>
+            <td>2</td>
+            <td>100,000</td>
+            <td>100,000</td>
+            <td>250</td>
+            <td>1,130</td>
+            <td><b>250</b> (HI: 80)</td>
+            <td class="pass">1,290</td>
+            <td>98,710</td>
+            <td>0.25%</td>
+          </tr>
+          <tr>
+            <td colspan="9"><b>Tổng Utilization (5 Tasks + 2.11% System ISR Baseline)</b></td>
+            <td class="pass">SCHEDULABLE</td>
+            <td class="pass">27.00% / 76%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h2>2. Máy Trạng thái Chuyển Chế độ (LO-Mode &harr; HI-Mode FSM)</h2>
+      <svg width="100%" height="250" viewBox="0 0 580 250" xmlns="http://www.w3.org/2000/svg">
+        <rect x="15" y="25" width="230" height="90" rx="8" fill="#dcfce7" stroke="#15803d" stroke-width="2"/>
+        <text x="130" y="48" text-anchor="middle" font-family="Consolas" font-size="12" font-weight="bold" fill="#14532d">LO-CRITICALITY MODE</text>
+        <text x="25" y="68" font-family="Consolas" font-size="10" fill="#166534">- All 5 roles active (U=16.89%)</text>
+        <text x="25" y="84" font-family="Consolas" font-size="10" fill="#166534">- R_ctrl = 70us, R_imu = 210us</text>
+        <text x="25" y="100" font-family="Consolas" font-size="10" fill="#166534">- SLEEP WFI (1ms) / STOP (>=5ms)</text>
+
+        <rect x="335" y="25" width="230" height="90" rx="8" fill="#fee2e2" stroke="#b91c1c" stroke-width="2"/>
+        <text x="450" y="48" text-anchor="middle" font-family="Consolas" font-size="12" font-weight="bold" fill="#7f1d1d">HI-CRITICALITY (DEGRADED)</text>
+        <text x="345" y="68" font-family="Consolas" font-size="10" fill="#991b1b">- BIT_DEGRADED_MODE_ENTERED = 1</text>
+        <text x="345" y="84" font-family="Consolas" font-size="10" fill="#991b1b">- Shed shell &amp; throttle telemetry</text>
+        <text x="345" y="100" font-family="Consolas" font-size="10" fill="#991b1b">- Lock STOP mode; Safe-hold IMU</text>
+
+        <rect x="175" y="155" width="230" height="75" rx="8" fill="#fef3c7" stroke="#b45309" stroke-width="2"/>
+        <text x="290" y="178" text-anchor="middle" font-family="Consolas" font-size="12" font-weight="bold" fill="#78350f">WATCHDOG &amp; .NOINIT RESET</text>
+        <text x="185" y="196" font-family="Consolas" font-size="10" fill="#92400e">- Log PC/LR/CFSR/Reason (.noinit)</text>
+        <text x="185" y="212" font-family="Consolas" font-size="10" fill="#92400e">- IWDG Recovery &le; 296 ms</text>
+
+        <path d="M 245 55 L 335 55" stroke="#dc2626" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="290" y="47" text-anchor="middle" font-family="Consolas" font-size="9.5" fill="#fca5a5">Unplug/Flood/Overload</text>
+
+        <path d="M 335 85 L 245 85" stroke="#16a34a" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="290" y="102" text-anchor="middle" font-family="Consolas" font-size="9.5" fill="#86efac">10 OK streaks &amp; U&lt;50%</text>
+
+        <path d="M 450 115 L 360 155" stroke="#f59e0b" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="440" y="142" text-anchor="middle" font-family="Consolas" font-size="9.5" fill="#fde68a">TASK_HANG (&gt;296ms)</text>
+
+        <path d="M 190 155 L 130 115" stroke="#38bdf8" stroke-width="2" marker-end="url(#arrow)"/>
+        <text x="120" y="142" text-anchor="middle" font-family="Consolas" font-size="9.5" fill="#bae6fd">Reboot + BIT_WDG</text>
+      </svg>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Ma trận Failure Mode &amp; Suy giảm Có kiểm soát (W4E1_FAILURE_MODE_TABLE)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Kịch bản Lỗi (W4.3)</th>
+          <th>Tài nguyên Dùng chung</th>
+          <th>Cơ chế Phát hiện &amp; Ngưỡng Định lượng</th>
+          <th>Phản ứng Cô lập &amp; Bảo vệ Tác vụ HI-Criticality</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>SENSOR_UNPLUG</b></td>
+          <td>I2C1 Bus &amp; MPU6050</td>
+          <td>I2C1_ER_IRQn (AF/BERR/ARLO) hoặc ulTaskNotifyTake timeout &gt; 28 ms; control phát hiện sample_tick cũ &gt; 2 ms.</td>
+          <td>Bật BIT_DEGRADED_MODE_ENTERED; imu chạy tối đa 9 xung SCL recovery trong task context (mở ngắt); control dùng safe-hold attitude (0 blocking).</td>
+        </tr>
+        <tr>
+          <td><b>UART_FLOOD</b></td>
+          <td>USART1 RX + DMA1_Ch5 + StreamBuffer</td>
+          <td>xStreamBufferSendFromISR trả về &lt; len (dropped &gt; 0), cờ ORE/FE/NE, hoặc shell parse vượt 200 ms.</td>
+          <td>Bật BIT_DEGRADED_MODE_ENTERED; mask USART1 IDLEIE trong 50 ms cooldown, xóa khung lỗi, đình chỉ shell &amp; hạ tải telemetry.</td>
+        </tr>
+        <tr>
+          <td><b>CPU_OVERLOAD</b></td>
+          <td>CPU Budget (76%) &amp; TIM3 Jitter (113 &mu;s)</td>
+          <td>DWT cycle counter phát hiện jitter &gt; 100 &mu;s, WCRT lệch &gt; 12% RTA, hoặc TIM2 100kHz báo tổng tải &gt; 76%.</td>
+          <td>Chuyển sang HI-Mode: đình chỉ shell (Prio 3) &amp; telemetry (Prio 5), khóa STOP mode ở idle_aux (Prio 2) để giữ PLL 72 MHz luôn nóng cho control &amp; imu.</td>
+        </tr>
+        <tr>
+          <td><b>TASK_HANG</b></td>
+          <td>Task Liveness &amp; Static RAM</td>
+          <td>EventGroup 5-bit heartbeat thiếu bit sau cửa sổ 100 ms, stack margin &lt; 23 words, hoặc HardFault/IWDG (&gt; 296 ms).</td>
+          <td>Ghi ID task treo, PC/LR/CFSR và reset reason vào .noinit (canary 0x6C217697), kích hoạt IWDG/NVIC reset trong &le; 296 ms và báo BIT_WATCHDOG_RECOVERED.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let scale = 0.95, panX = 10, panY = 5, isDragging = false, startX = 0, startY = 0;
+    const viewport = document.getElementById('viewport');
+    const group = document.getElementById('pan-zoom-group');
+    function updateTransform() {
+      group.setAttribute('transform', `translate(${panX}, ${panY}) scale(${scale})`);
+    }
+    function zoom(factor) {
+      scale = Math.min(2.5, Math.max(0.4, scale * factor));
+      updateTransform();
+    }
+    function resetView() {
+      scale = 0.95; panX = 10; panY = 5;
+      updateTransform();
+    }
+    viewport.addEventListener('mousedown', (e) => {
+      isDragging = true; startX = e.clientX - panX; startY = e.clientY - panY;
+    });
+    window.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      panX = e.clientX - startX; panY = e.clientY - startY;
+      updateTransform();
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoom(e.deltaY < 0 ? 1.08 : 0.92);
+    });
+    updateTransform();
+  </script>
+</body>
+</html>

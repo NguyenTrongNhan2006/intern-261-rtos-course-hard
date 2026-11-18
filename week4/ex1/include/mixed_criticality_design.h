@@ -10,9 +10,16 @@
 #define W4E1_MIXED_CRITICALITY_DESIGN_H
 
 #include <stdint.h>
+#include "params.h"
 
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#if defined(__GNUC__)
+#define W4E1_UNUSED __attribute__((unused))
+#else
+#define W4E1_UNUSED
 #endif
 
 /* One entry per task role. Fill W4E1_NUM_ROLES rows by hand in the design
@@ -58,6 +65,80 @@ typedef struct {
   const char *detection_method;
   const char *controlled_response;
 } w4e1_failure_mode_entry_t;
+
+/* Summary design constants (Single Source of Truth for W4.1 -> W4.4). */
+#define W4E1_DESIGN_RAM_USED_BYTES       11904UL
+#define W4E1_DESIGN_RAM_MARGIN_BYTES     (W4E1_RAM_BUDGET_BYTES - W4E1_DESIGN_RAM_USED_BYTES)
+#define W4E1_DESIGN_CPU_LO_PERCENT       17UL
+#define W4E1_DESIGN_CPU_WC_PERCENT       25UL
+#define W4E1_DESIGN_CPU_TOTAL_WC_PERCENT 27UL
+#define W4E1_DESIGN_CONTROL_JITTER_US    90UL
+#define W4E1_NUM_RAM_BUDGET_ENTRIES      18U
+#define W4E1_NUM_FAILURE_MODE_ENTRIES    4U
+
+/* Official hand-computed Worst-Case RTA table (5 roles, descending priority:
+ * control=8, imu=7, telemetry=5, shell=3, idle_aux=2).
+ * LO-mode nominal R_i: {70, 210, 390, 810, 1130} us.
+ * HI-stress worst-case R_i (with I2C1 recovery & ISR overhead):
+ * {90, 350, 530, 950, 1290} us. Every R_i <= D_i and R_control <= 113 us. */
+static const w4e1_rta_entry_t W4E1_UNUSED W4E1_RTA_TABLE[W4E1_NUM_ROLES] = {
+  /* role,                period_us, deadline_us, wcet_us, response_time_us, priority */
+  { W4E1_ROLE_CONTROL,       1000UL,      1000UL,    90UL,             90UL,      8UL },
+  { W4E1_ROLE_IMU,           2000UL,      2000UL,   260UL,            350UL,      7UL },
+  { W4E1_ROLE_TELEMETRY,    10000UL,     10000UL,   180UL,            530UL,      5UL },
+  { W4E1_ROLE_SHELL,        50000UL,    200000UL,   420UL,            950UL,      3UL },
+  { W4E1_ROLE_IDLE_AUX,    100000UL,    100000UL,   250UL,           1290UL,      2UL }
+};
+
+/* Official 100% Static-RAM budget table: sum = 11,904 bytes <= 15,684 bytes
+ * (W4E1_RAM_BUDGET_BYTES), leaving 3,780 bytes headroom. */
+static const w4e1_ram_budget_entry_t W4E1_UNUSED
+W4E1_RAM_BUDGET_TABLE[W4E1_NUM_RAM_BUDGET_ENTRIES] = {
+  { "control_task_stack (192 words)",          768UL },
+  { "imu_task_stack (192 words)",              768UL },
+  { "telemetry_task_stack (192 words)",        768UL },
+  { "shell_task_stack (256 words)",           1024UL },
+  { "idle_aux_task_stack (192 words)",         768UL },
+  { "freertos_idle_and_timer_stacks (2x128w)", 1024UL },
+  { "static_task_tcbs (7x96B StaticTask_t)",   672UL },
+  { "uart1_rx_dma_ring_buf (DMA1_Ch5)",        256UL },
+  { "uart1_rx_stream_buf_storage (W3.1)",      512UL },
+  { "uart1_tx_dma_pingpong_buf (DMA1_Ch4)",    256UL },
+  { "i2c1_trx_and_recovery_ctx (W2.1)",         64UL },
+  { "imu_spsc_snapshot_ring (16x32B W2.2)",    512UL },
+  { "shell_cmd_and_reply_buf (2x128B)",        256UL },
+  { "static_ipc_control_blocks (Sem/SB/EG)",   288UL },
+  { "runtime_stats_and_dwt_trace_buf",        2304UL },
+  { "noinit_postmortem_and_wdg_record (W3.3)", 128UL },
+  { "kernel_and_system_globals (.data/.bss)",  512UL },
+  { "msp_isr_stack_reserve (_Min_Stack_Size)", 1024UL }
+};
+
+/* Official Failure-Mode & Controlled-Degradation matrix covering the 4 fault
+ * classes (SENSOR_UNPLUG, UART_FLOOD, CPU_OVERLOAD, TASK_HANG). */
+static const w4e1_failure_mode_entry_t W4E1_UNUSED
+W4E1_FAILURE_MODE_TABLE[W4E1_NUM_FAILURE_MODE_ENTRIES] = {
+  {
+    "I2C1 / MPU6050 Bus (SENSOR_UNPLUG)",
+    "I2C1_ER_IRQn flags (AF/BERR/ARLO) or ulTaskNotifyTake timeout > 28 ms; control checks sample_tick staleness (> 2 ms)",
+    "Set W4E3_BIT_DEGRADED_MODE_ENTERED; imu runs bounded 9-clock SCL recovery in task context; control uses safe-hold attitude without blocking"
+  },
+  {
+    "USART1 RX + DMA1_Ch5 + StreamBuffer (UART_FLOOD)",
+    "xStreamBufferSendFromISR returns < len (dropped > 0), USART1 ORE/FE/NE flags, or shell parse exceeds 200 ms timeout",
+    "Set W4E3_BIT_DEGRADED_MODE_ENTERED; mask USART1 IDLEIE for 50 ms cooldown, flush corrupt frame, suspend shell & throttle telemetry"
+  },
+  {
+    "CPU Time & TIM3 1kHz Jitter Budget (CPU_OVERLOAD)",
+    "DWT cycle monitor sees control jitter > 113 us, WCRT > +12% RTA, or TIM2 100kHz runtime stats total CPU > 76%",
+    "Enter HI-Criticality mode: shed LO-criticality tasks (suspend telemetry & shell, lock out STOP mode in idle_aux) to protect control & imu"
+  },
+  {
+    "Task Liveness & Shared Static RAM (TASK_HANG)",
+    "EventGroup heartbeat mask incomplete within 100 ms window, stack high-water mark < 23 words, or HardFault/IWDG (> 296 ms)",
+    "Log hung role ID, PC/LR/CFSR and reset reason into .noinit post-mortem record (canary 0x6C217697), trigger IWDG/NVIC reset within 296 ms"
+  }
+};
 
 #ifdef __cplusplus
 }
