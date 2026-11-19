@@ -121,8 +121,8 @@ tfoot td { font-weight: 700; }
       <span class="kpi">MSSV <b>2452882</b> · STM32F103C8T6 @ 72 MHz</span>
       <span class="kpi">R_HI(control) <b>97 µs</b> ≤ jitter <b>113 µs</b> (margin 16)</span>
       <span class="kpi">RAM <b>11 904 / 15 684 B</b> (75,90 %)</span>
-      <span class="kpi">CPU <b>27,70 %</b> worst-case / 76 %</span>
-      <span class="kpi">Prio <b>2, 3, 5, 7, 8</b> · shell 200 ms · IWDG 296 ms</span>
+      <span class="kpi">CPU <b>31,29 %</b> worst-case / 76 %</span>
+      <span class="kpi">Prio <b>2, 3, 5, 7, 8</b> · I2C1 400 kHz · shell 200 ms · IWDG 296 ms</span>
     </div>
   </div>
   <button id="theme" type="button" title="Toggle light/dark">Theme</button>
@@ -161,6 +161,11 @@ tfoot td { font-weight: 700; }
 <path d="M 434 144 L 434 246" marker-end="url(#arr-data)"/>
 <rect class="pill" x="407.9" y="185.5" width="52.3" height="19.0" rx="9"/>
 <text class="el" x="434" y="199.0" text-anchor="middle">notify</text>
+</g>
+<g class="edge data" data-src="tim3" data-dst="imu">
+<path d="M 490 144 L 490 222 L 620 222 L 620 246" marker-end="url(#arr-data)"/>
+<rect class="pill" x="519.0" y="212.5" width="72.0" height="19.0" rx="9"/>
+<text class="el" x="555" y="226.0" text-anchor="middle">notify ÷2</text>
 </g>
 <g class="edge data" data-src="i2c" data-dst="imu">
 <path d="M 714 144 L 714 246" marker-end="url(#arr-data)"/>
@@ -247,7 +252,7 @@ tfoot td { font-weight: 700; }
 <g class="node hw" data-id="i2c">
 <rect x="629" y="60" width="170" height="84" rx="10"/>
 <text class="t" x="714" y="88.5" text-anchor="middle">I2C1 EV/ER ISR</text>
-<text class="b" x="714" y="106.5" text-anchor="middle">11 entries/sample</text>
+<text class="b" x="714" y="106.5" text-anchor="middle">400 kHz · 19/sample</text>
 <text class="b" x="714" y="123.5" text-anchor="middle">NVIC 6 · ≤5.58 µs</text>
 </g>
 <g class="node hw" data-id="utx">
@@ -286,7 +291,7 @@ tfoot td { font-weight: 700; }
 <rect x="594" y="246" width="240" height="100" rx="10"/>
 <text class="t" x="714" y="274" text-anchor="middle">imu <tspan class="tag">· P7 · HI</tspan></text>
 <text class="b" x="714" y="292" text-anchor="middle">T 2000 / D 2000 µs</text>
-<text class="b" x="714" y="309" text-anchor="middle">C_HI 260 / R_HI 357 µs</text>
+<text class="b" x="714" y="309" text-anchor="middle">C_HI 332 / R_HI 429 µs</text>
 <text class="b" x="714" y="326" text-anchor="middle">Stack 192 w (768 B)</text>
 <g class="hb"><rect x="802" y="252" width="26" height="15" rx="7.5"/><text x="815" y="263" text-anchor="middle">HB</text></g>
 </g>
@@ -319,7 +324,7 @@ tfoot td { font-weight: 700; }
 <rect x="104" y="590" width="250" height="100" rx="10"/>
 <text class="t" x="229" y="618" text-anchor="middle">shell <tspan class="tag">· P3 · LO</tspan></text>
 <text class="b" x="229" y="636" text-anchor="middle">T_min 50000 / D 200000 µs</text>
-<text class="b" x="229" y="653" text-anchor="middle">C_HI 420 / R_HI 957 µs</text>
+<text class="b" x="229" y="653" text-anchor="middle">C_HI 420 / R_HI 1126 µs</text>
 <text class="b" x="229" y="670" text-anchor="middle">Stack 256 w (1024 B)</text>
 <g class="hb"><rect x="322" y="596" width="26" height="15" rx="7.5"/><text x="335" y="607" text-anchor="middle">HB</text></g>
 </g>
@@ -327,7 +332,7 @@ tfoot td { font-weight: 700; }
 <rect x="394" y="590" width="260" height="100" rx="10"/>
 <text class="t" x="524" y="618" text-anchor="middle">telemetry <tspan class="tag">· P5 · LO</tspan></text>
 <text class="b" x="524" y="636" text-anchor="middle">T 10000 / D 10000 µs</text>
-<text class="b" x="524" y="653" text-anchor="middle">C_HI 180 / R_HI 537 µs</text>
+<text class="b" x="524" y="653" text-anchor="middle">C_HI 180 / R_HI 609 µs</text>
 <text class="b" x="524" y="670" text-anchor="middle">Stack 192 w (768 B)</text>
 <g class="hb"><rect x="622" y="596" width="26" height="15" rx="7.5"/><text x="635" y="607" text-anchor="middle">HB</text></g>
 </g>
@@ -335,7 +340,7 @@ tfoot td { font-weight: 700; }
 <rect x="994" y="590" width="470" height="100" rx="10"/>
 <text class="t" x="1229" y="618" text-anchor="middle">idle_aux <tspan class="tag">· P2 · LO</tspan></text>
 <text class="b" x="1229" y="636" text-anchor="middle">T 100000 / D 100000 µs</text>
-<text class="b" x="1229" y="653" text-anchor="middle">C_HI 250 / R_HI 1304 µs</text>
+<text class="b" x="1229" y="653" text-anchor="middle">C_HI 250 / R_HI 1376 µs</text>
 <text class="b" x="1229" y="670" text-anchor="middle">Stack 192 w (768 B)</text>
 </g>
       </g>
@@ -389,16 +394,16 @@ tfoot td { font-weight: 700; }
 <g class="node st-lo" data-id="lo">
 <rect x="40" y="50" width="260" height="120" rx="10"/>
 <text class="t" x="170" y="88" text-anchor="middle">LO-MODE (nominal)</text>
-<text class="b" x="170" y="106" text-anchor="middle">5 tasks · U = 16.89 %</text>
-<text class="b" x="170" y="123" text-anchor="middle">R ctrl 70 · imu 210 µs</text>
+<text class="b" x="170" y="106" text-anchor="middle">5 tasks · U = 18.14 %</text>
+<text class="b" x="170" y="123" text-anchor="middle">R ctrl 70 · imu 235 µs</text>
 <text class="b" x="170" y="140" text-anchor="middle">idle: SLEEP / gated STOP</text>
 </g>
 <g class="node st-hi" data-id="hi">
 <rect x="640" y="50" width="260" height="120" rx="10"/>
 <text class="t" x="770" y="88" text-anchor="middle">HI-MODE (degraded)</text>
 <text class="b" x="770" y="106" text-anchor="middle">DEGRADED bit · shed tel+shell</text>
-<text class="b" x="770" y="123" text-anchor="middle">R ctrl 97 · imu 357 µs</text>
-<text class="b" x="770" y="140" text-anchor="middle">STOP locked · U = 22.78 %</text>
+<text class="b" x="770" y="123" text-anchor="middle">R ctrl 97 · imu 429 µs</text>
+<text class="b" x="770" y="140" text-anchor="middle">STOP locked · U = 26.38 %</text>
 </g>
 <g class="node st-rst" data-id="rst">
 <rect x="380" y="255" width="180" height="100" rx="10"/>
@@ -422,14 +427,14 @@ tfoot td { font-weight: 700; }
       <thead><tr><th>Role</th><th>Crit</th><th>Prio</th><th class="num">T (µs)</th><th class="num">D (µs)</th><th>C_LO</th><th>R_LO</th><th>C_HI</th><th>R_HI</th><th>D − R_HI</th><th>R_HI iterations</th></tr></thead>
       <tbody>
 <tr><td><code>control</code></td><td><span class='b-hi'>HI</span></td><td>8</td><td class='num'>1 000</td><td class='num'>1 000</td><td>70</td><td>70</td><td><b>97</b></td><td><b>97</b></td><td>903 <small>(J 16)</small></td><td class='mono'>97</td></tr>
-<tr><td><code>imu</code></td><td><span class='b-hi'>HI</span></td><td>7</td><td class='num'>2 000</td><td class='num'>2 000</td><td>140</td><td>210</td><td><b>260</b></td><td><b>357</b></td><td>1 643</td><td class='mono'>260 → 357</td></tr>
-<tr><td><code>telemetry</code></td><td><span class='b-lo'>LO</span></td><td>5</td><td class='num'>10 000</td><td class='num'>10 000</td><td>180</td><td>390</td><td><b>180</b> <small>(shed → 0)</small></td><td><b>537</b></td><td>9 463</td><td class='mono'>180 → 537</td></tr>
-<tr><td><code>shell</code></td><td><span class='b-lo'>LO</span></td><td>3</td><td class='num'>50 000</td><td class='num'>200 000</td><td>420</td><td>810</td><td><b>420</b> <small>(shed → 0)</small></td><td><b>957</b></td><td>199 043</td><td class='mono'>420 → 957</td></tr>
-<tr><td><code>idle_aux</code></td><td><span class='b-lo'>LO</span></td><td>2</td><td class='num'>100 000</td><td class='num'>100 000</td><td>250</td><td>1130</td><td><b>250</b> <small>(HI → 80)</small></td><td><b>1304</b></td><td>98 696</td><td class='mono'>250 → 1207 → 1304</td></tr>
+<tr><td><code>imu</code></td><td><span class='b-hi'>HI</span></td><td>7</td><td class='num'>2 000</td><td class='num'>2 000</td><td>165</td><td>235</td><td><b>332</b></td><td><b>429</b></td><td>1 571 <small>(e2e 862)</small></td><td class='mono'>332 → 429</td></tr>
+<tr><td><code>telemetry</code></td><td><span class='b-lo'>LO</span></td><td>5</td><td class='num'>10 000</td><td class='num'>10 000</td><td>180</td><td>415</td><td><b>180</b> <small>(shed → 0)</small></td><td><b>609</b></td><td>9 391</td><td class='mono'>180 → 609</td></tr>
+<tr><td><code>shell</code></td><td><span class='b-lo'>LO</span></td><td>3</td><td class='num'>50 000</td><td class='num'>200 000</td><td>420</td><td>835</td><td><b>420</b> <small>(shed → 0)</small></td><td><b>1126</b></td><td>198 874</td><td class='mono'>420 → 1029 → 1126</td></tr>
+<tr><td><code>idle_aux</code></td><td><span class='b-lo'>LO</span></td><td>2</td><td class='num'>100 000</td><td class='num'>100 000</td><td>250</td><td>1155</td><td><b>250</b> <small>(HI → 80)</small></td><td><b>1376</b></td><td>98 624</td><td class='mono'>250 → 1279 → 1376</td></tr>
       </tbody>
-      <tfoot><tr><td colspan="11">U_LO = 16,89 % (+2,11 % ISR = 19,00 %) · U_HI = 25,59 % (+2,11 % ISR = 27,70 %) ≤ 76 % · every R ≤ D <span class="pass">PASS</span></td></tr></tfoot>
+      <tfoot><tr><td colspan="11">U_LO = 18,14 % (+2,10 % ISR = 20,24 %) · U_HI = 29,19 % (+2,10 % ISR = 31,29 %) ≤ 76 % · every R ≤ D <span class="pass">PASS</span></td></tr></tfoot>
     </table>
-    <p class="note">R<sub>i</sub><sup>(k+1)</sup> = C<sub>i</sub> + Σ<sub>j∈hp(i)</sub> ⌈R<sub>i</sub><sup>(k)</sup>/T<sub>j</sub>⌉·C<sub>j</sub>, iterated until a fixed point. Shell is sporadic (T = minimum inter-arrival) with D = 200 ms; R ≤ T so one job per busy period and the classic test stays valid.</p>
+    <p class="note">R<sub>i</sub><sup>(k+1)</sup> = C<sub>i</sub> + Σ<sub>j∈hp(i)</sub> ⌈R<sub>i</sub><sup>(k)</sup>/T<sub>j</sub>⌉·C<sub>j</sub>, iterated until a fixed point. Shell is sporadic (T = minimum inter-arrival) with D = 200 ms; R ≤ T so one job per busy period and the classic test stays valid. imu e2e = completion including ~433 µs of I2C bus wait at 400 kHz (suspension-oblivious): 332 + 433 + 97 = 862 µs ≤ 2000 µs.</p>
   </div>
   <div id="t-ram" class="tblwrap" hidden>
     <table>
@@ -462,7 +467,7 @@ tfoot td { font-weight: 700; }
     <table>
       <thead><tr><th>Resource / fault</th><th>Detection</th><th>Controlled response</th></tr></thead>
       <tbody>
-<tr><td><b>I2C1 / MPU6050 Bus (SENSOR_UNPLUG)</b></td><td>I2C1_ER_IRQn flags (AF/BERR/ARLO) or ulTaskNotifyTake timeout &gt; 28 ms; control checks sample_tick staleness (&gt; 2 ms)</td><td>Set W4E3_BIT_DEGRADED_MODE_ENTERED; imu runs bounded 9-clock SCL recovery in task context; control uses safe-hold attitude without blocking</td></tr>
+<tr><td><b>I2C1 / MPU6050 Bus (SENSOR_UNPLUG)</b></td><td>I2C1_ER_IRQn flags (AF/BERR/ARLO) or ulTaskNotifyTake timeout &gt; 28 ms; control checks sample_tick staleness (age &gt; 3 ticks)</td><td>Set W4E3_BIT_DEGRADED_MODE_ENTERED; imu runs bounded 9-clock SCL recovery in task context; control uses safe-hold attitude without blocking</td></tr>
 <tr><td><b>USART1 RX + DMA1_Ch5 + StreamBuffer (UART_FLOOD)</b></td><td>xStreamBufferSendFromISR returns &lt; len (dropped &gt; 0), USART1 ORE/FE/NE flags, or shell parse exceeds 200 ms timeout</td><td>Set W4E3_BIT_DEGRADED_MODE_ENTERED; mask USART1 IDLEIE for 50 ms cooldown, flush corrupt frame, suspend shell &amp; throttle telemetry</td></tr>
 <tr><td><b>CPU Time &amp; TIM3 1kHz Jitter Budget (CPU_OVERLOAD)</b></td><td>DWT cycle monitor sees control jitter &gt; 100 us (alarm before the 113 us limit), WCRT &gt; +12% RTA, or TIM2 100kHz runtime stats total CPU &gt; 76%</td><td>Enter HI-Criticality mode: shed LO-criticality tasks (suspend telemetry &amp; shell, lock out STOP mode in idle_aux) to protect control &amp; imu</td></tr>
 <tr><td><b>Task Liveness &amp; Shared Static RAM (TASK_HANG)</b></td><td>EventGroup heartbeat mask (active roles only; shed roles masked out in HI mode) incomplete within 100 ms window, stack high-water mark &lt; 23 words, or HardFault/IWDG (&gt; 296 ms)</td><td>Log hung role ID, PC/LR/CFSR and reset reason into .noinit post-mortem record (canary 0x6C217697), trigger IWDG/NVIC reset within 296 ms</td></tr>
