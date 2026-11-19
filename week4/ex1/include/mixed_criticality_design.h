@@ -67,7 +67,7 @@ typedef struct {
 } w4e1_failure_mode_entry_t;
 
 /* Summary design constants (Single Source of Truth for W4.1 -> W4.4). */
-#define W4E1_DESIGN_RAM_USED_BYTES       11904UL
+#define W4E1_DESIGN_RAM_USED_BYTES       11776UL
 #define W4E1_DESIGN_RAM_MARGIN_BYTES     (W4E1_RAM_BUDGET_BYTES - W4E1_DESIGN_RAM_USED_BYTES)
 #define W4E1_DESIGN_CPU_LO_PERCENT       19UL  /* 18.14 % (5 tasks at C_LO), rounded up */
 #define W4E1_DESIGN_CPU_WC_PERCENT       30UL  /* 29.19 % (5 tasks at C_HI), rounded up */
@@ -76,6 +76,11 @@ typedef struct {
 #define W4E1_DESIGN_JITTER_ALARM_US      100UL /* CPU_OVERLOAD early-warning, < 113 us hard limit */
 #define W4E1_DESIGN_I2C1_SCL_HZ          400000UL /* Fast-mode: 14-byte burst ~433 us on the bus (100 kHz: ~1619 us) */
 #define W4E1_DESIGN_IMU_STALE_TICKS      3UL   /* sample older than 3 ticks = stale (healthy max age is 3) */
+#define W4E1_DESIGN_IMU_BUS_US           433UL /* 14-byte burst on the wire at 400 kHz (imu is Blocked) */
+#define W4E1_DESIGN_IMU_E2E_US           862UL /* imu completion incl. bus wait, suspension-oblivious */
+#define W4E1_DESIGN_ISR_BACKGROUND_US    21UL  /* SysTick + TIM2 per 1 ms frame = 2.10 % CPU */
+#define W4E1_DESIGN_UART_RX_RING_BYTES   128UL /* DMA1_Ch5 circular, HT/TC every 64 B */
+#define W4E1_DESIGN_UART_RX_ISR_MAX_US   16UL  /* 220 + 12 x 64 B = 988 cycles = 13.7 us, rounded up */
 #define W4E1_NUM_RAM_BUDGET_ENTRIES      18U
 #define W4E1_NUM_FAILURE_MODE_ENTRIES    4U
 
@@ -90,6 +95,12 @@ typedef struct {
  * imu completion incl. ~433 us bus self-suspension: 862 us <= 2000 us.
  * C_HI(control) = C_LO 70 + stale/safe-hold branch 11 + one peripheral ISR
  * preemption 16 = 97 us. */
+/* C_LO per role (nominal WCET, us), same order as w4e1_task_role_t. The
+ * HI-mode WCET is W4E1_RTA_TABLE[i].wcet_us. */
+static const uint32_t W4E1_UNUSED W4E1_C_LO_US[W4E1_NUM_ROLES] = {
+  70UL, 165UL, 180UL, 420UL, 250UL
+};
+
 static const w4e1_rta_entry_t W4E1_UNUSED W4E1_RTA_TABLE[W4E1_NUM_ROLES] = {
   /* role,                period_us, deadline_us, wcet_us, response_time_us, priority */
   { W4E1_ROLE_CONTROL,       1000UL,      1000UL,    97UL,             97UL,      8UL },
@@ -99,8 +110,8 @@ static const w4e1_rta_entry_t W4E1_UNUSED W4E1_RTA_TABLE[W4E1_NUM_ROLES] = {
   { W4E1_ROLE_IDLE_AUX,    100000UL,    100000UL,   250UL,           1376UL,      2UL }
 };
 
-/* Official 100% Static-RAM budget table: sum = 11,904 bytes <= 15,684 bytes
- * (W4E1_RAM_BUDGET_BYTES), leaving 3,780 bytes headroom. */
+/* Official 100% Static-RAM budget table: sum = 11,776 bytes <= 15,684 bytes
+ * (W4E1_RAM_BUDGET_BYTES), leaving 3,908 bytes headroom. */
 static const w4e1_ram_budget_entry_t W4E1_UNUSED
 W4E1_RAM_BUDGET_TABLE[W4E1_NUM_RAM_BUDGET_ENTRIES] = {
   { "control_task_stack (192 words)",          768UL },
@@ -110,7 +121,7 @@ W4E1_RAM_BUDGET_TABLE[W4E1_NUM_RAM_BUDGET_ENTRIES] = {
   { "idle_aux_task_stack (192 words)",         768UL },
   { "freertos_idle_and_timer_stacks (2x128w)", 1024UL },
   { "static_task_tcbs (7x96B StaticTask_t)",   672UL },
-  { "uart1_rx_dma_ring_buf (DMA1_Ch5)",        256UL },
+  { "uart1_rx_dma_ring_buf (DMA1_Ch5, 2x64B)",  128UL },
   { "uart1_rx_stream_buf_storage (W3.1)",      512UL },
   { "uart1_tx_dma_pingpong_buf (DMA1_Ch4)",    256UL },
   { "i2c1_trx_and_recovery_ctx (W2.1)",         64UL },

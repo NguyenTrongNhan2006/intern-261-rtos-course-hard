@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""Consistency checker for week4/ex1 (W4.1 mixed-criticality design).
+
+Usage:  python3 tools/check_w4e1.py [MSSV]        (default MSSV 2452882)
+Exit 0 = every check passed, 1 = at least one FAIL.
+
+Single source of truth is week4/ex1/include/mixed_criticality_design.h.
+This script recomputes everything that can be derived from it (RTA in LO
+and HI mode, imu completion time with bus wait, CPU, RAM) and checks that
+PREDICTION.md, REPORT.md, w4e1_architecture.html and .graphml quote the
+same numbers. params.h is generated into a temporary directory with
+tools/gen_params.py, so the repository is left untouched.
+"""
+import math
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+EX1 = os.path.join(ROOT, "week4", "ex1")
+MSSV = sys.argv[1] if len(sys.argv) > 1 else "2452882"
+ROLES = ["control", "imu", "telemetry", "shell", "idle_aux"]
+FAILS = []
+
+
+def check(ok, msg):
+    print(("PASS  " if ok else "FAIL  ") + msg)
+    if not ok:
+        FAILS.append(msg)
+
+
+def read(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read()
+
+
+def define(src, name):
+    m = re.search(r"#define\s+%s\s+(\d+)" % name, src)
+    if not m:
+        raise SystemExit("missing #define %s" % name)
+    return int(m.group(1))
+
+
+def rta(C, T, S=None, J=None):
+    """Fixed-priority RTA, index 0 = highest priority. S = self-suspension
+    added to the task's own demand, J = release jitter seen by lower tasks."""
+    S = S or [0] * len(C)
+    J = J or [0] * len(C)
+    out = []
+    for i, c in enumerate(C):
+        r = c + S[i]
+        for _ in range(1000):
+            n = c + S[i] + sum(math.ceil((r + J[j]) / T[j]) * C[j] for j in range(i))
+            if n == r:
+                break
+            r = n
+        out.append(r)
+    return out
+
+
+def num(text):
+    """'1.376' / '1 376' / '1376' -> 1376 (Vietnamese thousands separators)."""
+    return int(re.sub(r"[.\s]", "", text))
+
+
+# ------------------------------------------------------------------ params
+tmp = tempfile.mkdtemp(prefix="w4e1_params_")
+try:
+    subprocess.run([sys.executable, os.path.join(ROOT, "tools", "gen_params.py"), MSSV,
+                    "--only", "w4e1,w4e2,w4e3", "--root", tmp], check=True, capture_output=True)
+    p1 = read(os.path.join(tmp, "week4/ex1/include/params.h"))
+    p2 = read(os.path.join(tmp, "week4/ex2/include/params.h"))
+    p3 = read(os.path.join(tmp, "week4/ex3/include/params.h"))
+    params_dir = os.path.join(tmp, "week4/ex1/include")
+    JIT = define(p1, "W4E1_CONTROL_LOOP_JITTER_MAX_US")
+    RAMB = define(p1, "W4E1_RAM_BUDGET_BYTES")
+    CPUB = define(p1, "W4E1_CPU_BUDGET_PERCENT_MAX")
+    SHELL_TO_MS = define(p2, "W4E2_SHELL_CMD_TIMEOUT_MS")
+    WDG_MS = define(p3, "W4E3_WATCHDOG_RECOVERY_TIMEOUT_MS")
+    PRIO = [int(x) for x in re.search(r"W4E2_TASK_PRIORITY\[W4E2_NUM_TASKS\] = \{([^}]*)\}", p2).group(1).split(",")]
+    FAULTS = re.findall(r'"(\w+)"', re.search(r"W4E3_ASSIGNED_FAULT_NAMES.*?\{(.*?)\}", p3, re.S).group(1))
+
+    # -------------------------------------------------------------- header
+    hdr_path = os.path.join(EX1, "include", "mixed_criticality_design.h")
+    hdr = read(hdr_path)
+    rows = re.findall(r"\{ W4E1_ROLE_(\w+),\s*(\d+)UL,\s*(\d+)UL,\s*(\d+)UL,\s*(\d+)UL,\s*(\d+)UL \}", hdr)
+    check([r[0].lower() for r in rows] == ROLES, "W4E1_RTA_TABLE lists the 5 roles in priority order")
+    T = [int(r[1]) for r in rows]
+    D = [int(r[2]) for r in rows]
+    CHI = [int(r[3]) for r in rows]
+    RHI = [int(r[4]) for r in rows]
+    P = [int(r[5]) for r in rows]
+    CLO = [int(x) for x in re.findall(r"(\d+)UL", re.search(r"W4E1_C_LO_US\[W4E1_NUM_ROLES\] = \{(.*?)\}", hdr, re.S).group(1))]
+    RAM = [int(b) for b in re.findall(r'\{ "[^"]+",\s*(\d+)UL \}', hdr)]
+    FM = re.findall(r'\{\s*"([^"]+)",\s*"[^"]+",\s*"[^"]+"\s*\}', hdr[hdr.index("W4E1_FAILURE_MODE_TABLE["):], re.S)
+    BUS = define(hdr, "W4E1_DESIGN_IMU_BUS_US")
+    E2E = define(hdr, "W4E1_DESIGN_IMU_E2E_US")
+    ISR_BG = define(hdr, "W4E1_DESIGN_ISR_BACKGROUND_US")
+    ALARM = define(hdr, "W4E1_DESIGN_JITTER_ALARM_US")
+
+    # ---------------------------------------------------------- derivations
+    check(P == sorted(PRIO, reverse=True), "priorities %s == W4E2_TASK_PRIORITY %s (descending)" % (P, PRIO))
+    rhi = rta(CHI, T)
+    rlo = rta(CLO, T)
+    check(rhi == RHI, "HI-mode RTA recomputed %s == response_time_us %s" % (rhi, RHI))
+    check(all(r <= d for r, d in zip(rhi, D)), "every R_HI <= D")
+    check(rhi[0] <= ALARM < JIT, "R_HI(control) %d <= jitter alarm %d < hard limit %d" % (rhi[0], ALARM, JIT))
+    check(all(lo <= hi for lo, hi in zip(CLO, CHI)), "C_LO <= C_HI for every role")
+    e2e = rta(CHI, T, S=[0, BUS, 0, 0, 0])[1]
+    check(e2e == E2E and e2e <= D[1], "imu completion with %d us bus wait = %d us (header %d) <= D %d" % (BUS, e2e, E2E, D[1]))
+    jit = [0, e2e - CHI[1], 0, 0, 0]
+    check(rta(CHI, T, J=jit) == rhi, "imu completion jitter %d us does not change lower-priority R" % jit[1])
+    check(D[3] == SHELL_TO_MS * 1000 and rhi[3] <= T[3], "shell D = shell timeout %d ms and R <= T_min (classic RTA valid)" % SHELL_TO_MS)
+    u_lo = sum(c / t for c, t in zip(CLO, T)) * 100
+    u_hi = sum(c / t for c, t in zip(CHI, T)) * 100
+    u_bg = ISR_BG / 1000 * 100
+    check(define(hdr, "W4E1_DESIGN_CPU_LO_PERCENT") == math.ceil(u_lo), "CPU_LO_PERCENT == ceil(%.2f)" % u_lo)
+    check(define(hdr, "W4E1_DESIGN_CPU_WC_PERCENT") == math.ceil(u_hi), "CPU_WC_PERCENT == ceil(%.2f)" % u_hi)
+    check(define(hdr, "W4E1_DESIGN_CPU_TOTAL_WC_PERCENT") == math.ceil(u_hi + u_bg) and u_hi + u_bg <= CPUB,
+          "CPU_TOTAL_WC_PERCENT == ceil(%.2f) <= budget %d" % (u_hi + u_bg, CPUB))
+    check(len(RAM) == define(hdr, "W4E1_NUM_RAM_BUDGET_ENTRIES") and sum(RAM) == define(hdr, "W4E1_DESIGN_RAM_USED_BYTES") <= RAMB,
+          "RAM table sums to %d B == W4E1_DESIGN_RAM_USED_BYTES <= budget %d B" % (sum(RAM), RAMB))
+    check(len(FM) == 4 and all(any(f in row for row in FM) for f in FAULTS), "failure table covers %s" % FAULTS)
+
+    # ------------------------------------------------------- documentation
+    docs = {k: read(os.path.join(EX1, f)) for k, f in [
+        ("PREDICTION", "PREDICTION.md"), ("REPORT", "REPORT.md"),
+        ("HTML", "w4e1_architecture.html"), ("GraphML", "w4e1_architecture.graphml")]}
+    for name, text in docs.items():
+        ctl = re.findall(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", text)
+        check(not ctl, "%s has no stray control characters (e.g. \\a from an unescaped \\approx)" % name)
+    for name in ("REPORT", "HTML", "GraphML"):
+        found = [tuple(map(int, m)) for m in re.findall(r"C_HI (\d+) / R_HI (\d+)", docs[name])]
+        check(sorted(found) == sorted(zip(CHI, RHI)), "%s diagram labels C_HI/R_HI == header (any order)" % name)
+    pred = {}
+    for m in re.finditer(r"^\| `(\w+)` \| \*\*(?:HI|LO)\*\* \|([^\n]*)", docs["PREDICTION"], re.M):
+        cells = [c.strip() for c in m.group(2).split("|")]
+        pred[m.group(1)] = [num(re.match(r"[\d.]+", re.sub(r"\*", "", cells[i])).group(0)) for i in (2, 3, 4, 5)]
+    check([pred.get(r) for r in ROLES] == [[a, b, c, d] for a, b, c, d in zip(CLO, CHI, rlo, rhi)],
+          "PREDICTION RTA table (C_LO, C_HI, R_LO, R_HI) == recomputed")
+    rep = {}
+    for m in re.finditer(r"^\| `W4E1_ROLE_\w+` \(`(\w+)`\)([^\n]*)", docs["REPORT"], re.M):
+        cells = [c.strip().replace("*", "") for c in m.group(2).split("|")]
+        rep[m.group(1)] = [num(re.match(r"[\d.]+", cells[i]).group(0)) for i in (5, 6, 7, 8)]
+    check([rep.get(r) for r in ROLES] == [[a, b, c, d] for a, b, c, d in zip(CLO, rlo, CHI, rhi)],
+          "REPORT §2.1 table (C_LO, R_LO, C_HI, R_HI) == recomputed")
+    ram_vi = "{:,}".format(sum(RAM)).replace(",", ".")
+    check(ram_vi in docs["PREDICTION"] and ram_vi in docs["REPORT"] and "{:,}".format(sum(RAM)).replace(",", " ") in docs["HTML"],
+          "RAM total %s quoted in PREDICTION, REPORT and HTML" % ram_vi)
+    for name in ("PREDICTION", "REPORT", "HTML"):
+        tot = ("%.2f" % (u_hi + u_bg)).replace(".", ",")
+        check(tot in docs[name], "%s quotes worst-case CPU %s %%" % (name, tot))
+    check(str(WDG_MS) in docs["HTML"] and str(WDG_MS) in docs["REPORT"], "watchdog %d ms quoted" % WDG_MS)
+
+    # ------------------------------------------------------- build checks
+    gcc = shutil.which("arm-none-eabi-gcc")
+    if gcc:
+        r = subprocess.run([gcc, "-fsyntax-only", "-std=c99", "-Wall", "-Wextra", "-Werror", "-pedantic",
+                            "-I", os.path.join(EX1, "include"), "-I", params_dir, hdr_path], capture_output=True, text=True)
+        check(r.returncode == 0, "arm-none-eabi-gcc -std=c99 -Werror -pedantic on the header" + ("" if r.returncode == 0 else ": " + r.stderr.strip()))
+    else:
+        print("SKIP  arm-none-eabi-gcc not installed")
+    r = subprocess.run(["bash", os.path.join(ROOT, "tools", "check_api.sh"), "week4"], cwd=ROOT, capture_output=True, text=True)
+    check(r.returncode == 0, "tools/check_api.sh week4" + ("" if r.returncode == 0 else ":\n" + r.stdout))
+    stray = [f for f in os.listdir(EX1) if f.endswith((".c", ".py", ".png", ".tmp"))]
+    check(not stray, "no source/script/temp files inside week4/ex1 %s" % (stray or ""))
+finally:
+    shutil.rmtree(tmp, ignore_errors=True)
+
+print("\n%s: %d failure(s)" % ("FAIL" if FAILS else "PASS", len(FAILS)))
+sys.exit(1 if FAILS else 0)

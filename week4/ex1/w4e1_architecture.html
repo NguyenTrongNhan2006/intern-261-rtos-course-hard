@@ -120,7 +120,7 @@ tfoot td { font-weight: 700; }
     <div class="kpis">
       <span class="kpi">MSSV <b>2452882</b> · STM32F103C8T6 @ 72 MHz</span>
       <span class="kpi">R_HI(control) <b>97 µs</b> ≤ jitter <b>113 µs</b> (margin 16)</span>
-      <span class="kpi">RAM <b>11 904 / 15 684 B</b> (75,90 %)</span>
+      <span class="kpi">RAM <b>11 776 / 15 684 B</b> (75,08 %)</span>
       <span class="kpi">CPU <b>31,29 %</b> worst-case / 76 %</span>
       <span class="kpi">Prio <b>2, 3, 5, 7, 8</b> · I2C1 400 kHz · shell 200 ms · IWDG 296 ms</span>
     </div>
@@ -447,7 +447,7 @@ tfoot td { font-weight: 700; }
 <tr><td>5</td><td><code>idle_aux_task_stack (192 words)</code></td><td class='num'>768</td><td class='num'>4,90 %</td></tr>
 <tr><td>6</td><td><code>freertos_idle_and_timer_stacks (2x128w)</code></td><td class='num'>1 024</td><td class='num'>6,53 %</td></tr>
 <tr><td>7</td><td><code>static_task_tcbs (7x96B StaticTask_t)</code></td><td class='num'>672</td><td class='num'>4,28 %</td></tr>
-<tr><td>8</td><td><code>uart1_rx_dma_ring_buf (DMA1_Ch5)</code></td><td class='num'>256</td><td class='num'>1,63 %</td></tr>
+<tr><td>8</td><td><code>uart1_rx_dma_ring_buf (DMA1_Ch5, 2x64B)</code></td><td class='num'>128</td><td class='num'>0,82 %</td></tr>
 <tr><td>9</td><td><code>uart1_rx_stream_buf_storage (W3.1)</code></td><td class='num'>512</td><td class='num'>3,26 %</td></tr>
 <tr><td>10</td><td><code>uart1_tx_dma_pingpong_buf (DMA1_Ch4)</code></td><td class='num'>256</td><td class='num'>1,63 %</td></tr>
 <tr><td>11</td><td><code>i2c1_trx_and_recovery_ctx (W2.1)</code></td><td class='num'>64</td><td class='num'>0,41 %</td></tr>
@@ -459,8 +459,8 @@ tfoot td { font-weight: 700; }
 <tr><td>17</td><td><code>kernel_and_system_globals (.data/.bss)</code></td><td class='num'>512</td><td class='num'>3,26 %</td></tr>
 <tr><td>18</td><td><code>msp_isr_stack_reserve (_Min_Stack_Size)</code></td><td class='num'>1 024</td><td class='num'>6,53 %</td></tr>
       </tbody>
-      <tfoot><tr><td></td><td>Total (budget 15 684 B)</td><td class="num">11 904</td><td class="num">75,90 %</td></tr>
-      <tr><td></td><td>Margin</td><td class="num">+3 780</td><td class="num"><span class="pass">PASS</span></td></tr></tfoot>
+      <tfoot><tr><td></td><td>Total (budget 15 684 B)</td><td class="num">11 776</td><td class="num">75,08 %</td></tr>
+      <tr><td></td><td>Margin</td><td class="num">+3 908</td><td class="num"><span class="pass">PASS</span></td></tr></tfoot>
     </table>
   </div>
   <div id="t-fm" class="tblwrap" hidden>

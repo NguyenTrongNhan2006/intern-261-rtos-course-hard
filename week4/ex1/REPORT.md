@@ -189,7 +189,7 @@ Toàn bộ hệ thống sử dụng `configSUPPORT_STATIC_ALLOCATION = 1` và `c
 | 5 | `idle_aux_task_stack (192 words)` | $192\text{ words} \times 4\text{ B}$ (Run-time stats + IWDG + Tickless) | 768 | 4,90% |
 | 6 | `freertos_idle_and_timer_stacks (2x128w)` | $2 \times 128\text{ words} \times 4\text{ B}$ (Idle Task + Timer Daemon W1.4) | 1.024 | 6,53% |
 | 7 | `static_task_tcbs (7x96B StaticTask_t)` | $7\text{ tasks} \times 96\text{ B}$ (`StaticTask_t` thực đo ở W1.4) | 672 | 4,28% |
-| 8 | `uart1_rx_dma_ring_buf (DMA1_Ch5)` | Bộ đệm vòng DMA nhận `USART1` (chuẩn W3.1) | 256 | 1,63% |
+| 8 | `uart1_rx_dma_ring_buf (DMA1_Ch5, 2x64B)` | Bộ đệm vòng DMA nhận `USART1`, ngắt HT/TC mỗi 64 B (W3.1 dùng 256 B; giảm để ISR chép ≤ 64 B/lần ≈ 13,7 µs) | 128 | 0,82% |
 | 9 | `uart1_rx_stream_buf_storage (W3.1)` | Vùng nhớ `StreamBuffer` (511 B hữu dụng + 1 B sentinel) | 512 | 3,26% |
 | 10 | `uart1_tx_dma_pingpong_buf (DMA1_Ch4)` | Bộ đệm kép $2 \times 128\text{ B}$ phát DMA 1 Mbps không chờ | 256 | 1,63% |
 | 11 | `i2c1_trx_and_recovery_ctx (W2.1)` | Bộ đệm khung đọc/ghi MPU6050 + biến trạng thái FSM I2C1 | 64 | 0,41% |
@@ -200,8 +200,8 @@ Toàn bộ hệ thống sử dụng `configSUPPORT_STATIC_ALLOCATION = 1` và `c
 | 16 | `noinit_postmortem_and_wdg_record (W3.3)` | Section `.noinit` lưu `fault_record_t` (96 B) + lý do reset IWDG (32 B) | 128 | 0,82% |
 | 17 | `kernel_and_system_globals (.data/.bss)` | Biến scheduler/timer FreeRTOS (236 + 188 + 12 = 436 B ở W1.4) + `w4e2_system_status_t` (3 × `uint32_t` = 12 B) + 64 B dự phòng | 512 | 3,26% |
 | 18 | `msp_isr_stack_reserve (_Min_Stack_Size)` | Ngăn xếp chính `MSP` dùng cho các ngắt phần cứng (chuẩn W1.4) | 1.024 | 6,53% |
-| — | **TỔNG RAM TĨNH THIẾT KẾ** | **Đạt chuẩn `< W4E1_RAM_BUDGET_BYTES` (15.684 B)** | **11.904** | **75,90%** |
-| — | **Biên an toàn RAM còn dư (Margin)** | $15.684 - 11.904\text{ B}$ *(Còn dư $8.576\text{ B}$ so với 20 KiB vật lý)* | **+3.780** | **+24,10%** |
+| — | **TỔNG RAM TĨNH THIẾT KẾ** | **Đạt chuẩn `< W4E1_RAM_BUDGET_BYTES` (15.684 B)** | **11.776** | **75,08%** |
+| — | **Biên an toàn RAM còn dư (Margin)** | $15.684 - 11.776\text{ B}$ *(Còn dư $8.704\text{ B}$ so với 20 KiB vật lý)* | **+3.908** | **+24,92%** |
 
 ### 2.3. Ma trận Failure Mode & Suy giảm Có kiểm soát (`W4E1_FAILURE_MODE_TABLE`)
 
@@ -223,7 +223,7 @@ Khi xây dựng bảng RTA cho W4.1, nếu chỉ lấy thời gian chạy thuậ
 | `control` | 62 | **97** | **+35 µs** | Phần thuật toán $62 = 1$ (đọc SPSC) $+ 56$ (lọc + PID 3 trục) $+ 5$ (status + heartbeat), khớp $C_{LO} = 70$ ở PREDICTION. Cộng thêm: (1) Trễ vào/ra `TIM3_IRQHandler` + chuyển ngữ cảnh `PendSV` ở `-O2` ($244\text{ cycles} \approx 3,4\text{ }\mu\text{s}$ từ W1.2, tổng $+8\text{ }\mu\text{s}$); (2) Nhánh kiểm tra mẫu cũ & dự phóng an toàn khi mất IMU ($+11\text{ }\mu\text{s}$); (3) Nhiễu che ngắt tối đa từ 1 sự kiện ISR ngoại vi đang chạy dở ($+16\text{ }\mu\text{s}$). Tổng $62 + 8 + 11 + 16 = 97$. *(Bản trước ghi $C_{naive} = 55 \Rightarrow 90$, mâu thuẫn với $C_{LO} = 70$; đã sửa ở audit §5.)* |
 | `imu` | 105 | **332** | **+227 µs** | Phần cơ sở $105 = 7$ (đánh thức task) $+ 98$ (quy đổi dữ liệu + ghi SPSC). Cộng thêm: (1) 19 lần vào ISR `I2C1_EV/ER` của một mẫu accel + gyro (ghi địa chỉ thanh ghi 4 lần + đọc burst 14 byte 15 lần) lấy trần $5{,}583\text{ }\mu\text{s}$/lần đo ở W2.1 $\Rightarrow +107\text{ }\mu\text{s}$ ($C_{LO} = 165$ dùng trung bình $3{,}18\text{ }\mu\text{s}$/lần $\Rightarrow +60$); (2) nhánh **I2C1 Bus Recovery** trong ngữ cảnh task khi SDA bị kẹt (9 xung SCL $90\text{ }\mu\text{s}$ + START/STOP $17,75\text{ }\mu\text{s}$ + nạp lại `CCR/TRISE` $12,25\text{ }\mu\text{s} \Rightarrow +120\text{ }\mu\text{s}$). Thời gian bus ($\approx 433\text{ }\mu\text{s}$ ở 400 kHz) **không** nằm trong $C$ vì task bị Blocked; nó được kiểm riêng ở §2.1. |
 | `telemetry` | 150 | **180** | **+30 µs** | Cộng thêm: Chi phí tính CRC32 phần mềm trên khung 70 B ($70 \times 110\text{ cycles} = 7.700\text{ cycles} \approx 107\text{ }\mu\text{s}$ theo W3.1) cộng thao tác cấu hình `DMA1_Channel4` và xử lý ngắt Transfer Complete ($+30\text{ }\mu\text{s}$). |
-| `shell` | 350 | **420** | **+70 µs** | Cộng thêm: Chi phí ngắt `USART1 IDLE` + `DMA1_Channel5` chép vòng vào `StreamBuffer` ($220\text{ cycles} + 12\text{ cycles/B}$ theo W3.1 $\approx +25\text{ }\mu\text{s}$) và chi phí định dạng chuỗi phản hồi vào `reply_buf` ($+45\text{ }\mu\text{s}$). |
+| `shell` | 350 | **420** | **+70 µs** | Cộng thêm: Chi phí ngắt `USART1 IDLE` + `DMA1_Channel5` chép vòng vào `StreamBuffer` (khung 70 B = 2 sự kiện: $2 \times 220 + 70 \times 12 = 1.280\text{ cycles} \approx 18\text{ }\mu\text{s}$ theo ngân sách W3.1, làm tròn lên $+25\text{ }\mu\text{s}$) và chi phí định dạng chuỗi phản hồi vào `reply_buf` ($+45\text{ }\mu\text{s}$). |
 | `idle_aux` | 180 | **250** | **+70 µs** | Cộng thêm: Chi phí quét mảng TCB trong `uxTaskGetSystemState()` và 5 lần gọi `uxTaskGetStackHighWaterMark()` ($+50\text{ }\mu\text{s}$) cộng phép chia 64-bit hiệu chuẩn tần số `RTC LSI` theo `HSE` từ W3.2 ($+20\text{ }\mu\text{s}$). |
 
 ---
@@ -259,7 +259,7 @@ Quy ước phân loại: **Fact** = đối chiếu được với file/số đo 
 | Hoàn tất `imu` kể cả chờ bus 400 kHz | Suspension-oblivious, $S = 433\ \mu s$ | 668 µs (LO), **862 µs** (HI) $\le 2.000$; jitter 530 µs không đổi $R$ của task thấp hơn |
 | `idle_aux` ở HI-shed | $C = 80$, chỉ chịu `control` + `imu` | $80 + 97 + 332 = 509$ µs |
 | CPU | $\sum C_i/T_i$, nền ISR $21\ \mu s/1\ ms = 2{,}10\ \%$ | LO 18,14 % (20,24 %), HI 29,19 % (31,29 %), HI-shed 26,38 % — dưới 76 % |
-| RAM | Cộng 18 dòng `W4E1_RAM_BUDGET_TABLE` | **11.904 B** = `W4E1_DESIGN_RAM_USED_BYTES`; dư 3.780 B (24,10 %) |
+| RAM | Cộng 18 dòng `W4E1_RAM_BUDGET_TABLE` | **11.776 B** = `W4E1_DESIGN_RAM_USED_BYTES`; dư 3.908 B (24,92 %) |
 | Failure mode | Đối chiếu `W4E3_ASSIGNED_FAULT_NAMES` | Đủ 4/4 lớp lỗi, mỗi dòng có phát hiện + phản ứng + ảnh hưởng tới `control` |
 | `shell` có $D > T$ (200 ms > 50 ms) | Điều kiện áp dụng RTA cổ điển | Hợp lệ vì $R_{shell} = 1.126\ \mu s \le T = 50\ ms$: busy period chỉ chứa 1 job |
 | Header C99 | `arm-none-eabi-gcc -fsyntax-only -std=c99 -Wall -Wextra -Werror -pedantic` | PASS |
@@ -273,7 +273,7 @@ Quy ước phân loại: **Fact** = đối chiếu được với file/số đo 
 | F2 | Fact | Ngưỡng `CPU_OVERLOAD`: header ghi jitter > 113 µs, REPORT/FSM ghi > 100 µs | Thống nhất: báo động ở **100 µs** (`W4E1_DESIGN_JITTER_ALARM_US`), trần cứng 113 µs |
 | F3 | Fact | Sơ đồ cũ ghi ISR có "NVIC Priority < configMAX_SYSCALL_INTERRUPT_PRIORITY" — ngược: ISR mức số học nhỏ hơn 5 **không được** gọi API FreeRTOS | Sửa thành NVIC ≥ 5 (khớp `configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY 5u`) |
 | F4 | Fact | "Thực nghiệm W3.2 … 1,71–2,21 ms" là **dự báo**: W3.2 REPORT ghi chân PA0 không tách được thời gian thoát STOP + khóa PLL | Sửa câu chữ ở PREDICTION và REPORT §1 |
-| F5 | Fact | `w4e2_system_status_t` ghi 76 B; thực tế 3 × `uint32_t` = **12 B** | Sửa diễn giải dòng 17 (436 + 12 + 64 B dự phòng = 512 B), tổng RAM không đổi |
+| F5 | Fact | `w4e2_system_status_t` ghi 76 B; thực tế 3 × `uint32_t` = **12 B** | Sửa diễn giải dòng 17 (436 + 12 + 64 B dự phòng = 512 B), tổng RAM không đổi ở vòng này |
 | F6 | Fact | Sơ đồ cũ ghi StreamBuffer "Capacity 512 B"; bảng RAM ghi đúng 511 B hữu dụng + 1 B | Sửa nhãn sơ đồ |
 | F7 | Gap | Nhánh phát 9 xung SCL **chưa từng chạy** ở W2.1 (`PULSES=0` cả 3 log); $90\ \mu s$ là suy từ 100 kHz. Lượt `RECOVERED` nhanh đo được 153–427 µs wall-clock (chưa tách CPU) | Giữ 120 µs recovery trong $C_{HI}(imu)$, cận bảo thủ ở §5.4; W4.3 đo CPU time recovery bằng DWT |
 | F8 | Fact | Số ISR `I2C1` dùng giá trị **trung bình** ($\approx 3{,}18$ µs/lần) thay vì trần 5,583 µs/lần | $C_{HI}(imu)$ nay dùng trần (F14) |
@@ -298,6 +298,8 @@ Quy ước phân loại: **Fact** = đối chiếu được với file/số đo 
 | F22 | Fact | §4 khẳng định "bất kỳ hoán vị nào" cũng vi phạm — sai với hoán vị `telemetry` ↔ `shell` (vẫn schedulable, $R_{telemetry} = 1.126\ \mu s$) | Thu hẹp kết luận; nêu rõ thứ tự giữa task LO do RM và `W4E2_TASK_PRIORITY` quyết định |
 | F23 | Fact | Link tới `include/params.h` và `../ex2/include/params.h` không mở được trên GitHub vì file bị `.gitignore` (sinh bằng `gen_params.py`) | Ghi chú cách sinh file ở đầu tài liệu |
 | F24 | Fact | §2.2 ghi `StaticStreamBuffer_t = 80 B` và `StaticEventGroup_t = 32 B` là "kế thừa W1.4" — W1.4 không đo hai kiểu này | Ghi lại là cận trên bảo thủ |
+| F25 | Inference | Theo ngân sách W3.1 (220 cycle/sự kiện + 12 cycle/B), với vòng DMA 256 B mỗi ngắt HT/TC chép tới 128 B ≈ 24,4 µs, vượt 16 µs đã dành trong $C_{HI}(control)$; chính §3 lại dùng ≈ 25 µs cho `shell` | Vòng DMA RX còn **128 B** (HT/TC mỗi 64 B ⇒ ≤ 13,7 µs/lần, `W4E1_DESIGN_UART_RX_RING_BYTES`): giữ nguyên $C_{HI}(control) = 97$, RAM 11.904 → **11.776 B**. Đổi lại nửa vòng chỉ còn 0,64 ms ở 1 Mbps; W4.2 kiểm `dma_late = 0`, `dropped = 0` |
+| F26 | Fact | PREDICTION trình bày mọi $C_i$ như "số đo thực nghiệm W1–W3", nhưng phần lớn thành phần (PID 56 µs, quy đổi IMU 98 µs, parser shell 350 µs, …) chưa từng được đo | PREDICTION tách bảng nguồn gốc từng $C_i$ với nhãn Đo / Suy luận / Ước lượng và thêm nhật ký sửa đổi |
 
 ### 5.4. Phân tích độ nhạy (cận bảo thủ cho `imu`)
 
@@ -317,6 +319,7 @@ Kết luận: tính schedulable **không phụ thuộc** vào các khoảng tr�
 
 ### 5.5. Kiểm chứng sơ đồ
 
+- Toàn bộ tính nhất quán (RTA LO/HI, hoàn tất `imu`, CPU, RAM, số trích ở 5 file, gcc C99, `check_api.sh`) kiểm lại được bằng một lệnh: `python3 tools/check_w4e1.py` (xem `AGENTS.md`).
 - [w4e1_architecture.html](w4e1_architecture.html) và [w4e1_architecture.graphml](w4e1_architecture.graphml) dùng **cùng một bảng toạ độ** (lưới 4 làn, đường vuông góc có điểm bẻ góc tường minh). Kiểm tự động: không có cặp cạnh nào cắt nhau, không cạnh nào xuyên node khác, mọi nhãn nằm trên đúng cạnh của nó và không chạm nhãn/node/cạnh khác; bản HTML được render bằng Chromium (sáng và tối) và đo bbox chữ thật: 0 va chạm, 0 lỗi JavaScript, không cuộn ngang ở bề rộng 390 px.
 - GraphML: `xml.etree.ElementTree` parse OK; mọi đoạn polyline đều ngang/dọc, cổng `sx/sy/tx/ty` nằm đúng trên biên node. **Chưa kiểm**: hiển thị thực tế trong yEd (môi trường không có yEd) — vị trí nhãn cạnh do `SmartEdgeLabelModel` của yEd quyết định theo `segment`/`ratio` đã ghi.
 - Ba sơ đồ Mermaid ở §1 được render bằng mermaid 10.9.1: 0 giao cắt, 0 cạnh xuyên node, 0 nhãn bị cạnh khác cắt. GitHub/VSCode có thể dùng phiên bản Mermaid khác nên bố cục có thể lệch nhẹ.

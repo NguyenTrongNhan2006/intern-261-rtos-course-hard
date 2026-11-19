@@ -38,6 +38,10 @@ Prompt tóm tắt: cung cấp blocking_app.c, priority_ceiling.c, FreeRTOSConfig
 
 Prompt tóm tắt: tiếp tục từ buggy.log.txt, kiểm tra có cần logic analyzer không, sau đó rà prediction, điền report và kiểm tra build/API cho cả buggy/fixed. Em nạp và thu hai log UART đầy đủ; AI đối chiếu source, đếm lại 1000 marker gửi và 500 marker nhận mỗi lượt. Buggy nhận 500 sự kiện, fixed nhận count 2 trong cả 500 lần nên tổng 1000; TRACE_DROPPED bằng 0. AI tách EV/Gantt, tạo CSV và biểu đồ từ log gốc, ghi rõ Gantt chỉ bao phủ khoảng 0.29 s còn EV bao phủ toàn lượt khoảng 5 s. Báo cáo giữ cycle đo được 297/571 và 303/581: notification không nhanh hơn trong benchmark tự notify/wait này. RAM 460/380 byte là chi phí đối tượng; hai image vẫn giữ semaphore benchmark và cùng dùng 6800 byte RAM. Giữ các con số prediction định lượng đã có, ghi rõ chưa có commit prediction định lượng riêng trước đo; không chỉnh lịch sử hoặc số dự đoán để khớp kết quả. Build/API sau rà hồ sơ tách khỏi bằng chứng chạy board.
 
+## W4E1 – Thiết kế mixed-criticality (trên giấy)
+
+Prompt tóm tắt: audit toán học và hồ sơ W4.1 (header, PREDICTION, REPORT) đối chiếu số đo W1–W3, vẽ lại sơ đồ kiến trúc (Mermaid, HTML, GraphML) cho gọn, không chồng đường nối; sau đó rà tiếp REPORT, PREDICTION và chuẩn bị repo cho agent khác làm việc. AI (Claude) tính lại RTA LO/HI bằng script độc lập, đối chiếu từng con số với W1.2, W1.3, W1.4, W2.1, W2.2, W2.4, W3.1, W3.2, W3.3 và vẽ lại sơ đồ có kiểm va chạm tự động. Em chọn các quyết định thiết kế khi AI nêu mâu thuẫn: C_HI(control) 90 → 97 µs; I2C1 100 → 400 kHz vì `imu` đọc 14 byte accel + gyro sẽ trễ deadline ở 100 kHz; vòng DMA RX 256 → 128 B để ISR UART ≤ 16 µs. Thêm `tools/check_w4e1.py` để kiểm tính nhất quán, `AGENTS.md`/`CLAUDE.md` để hướng dẫn agent. Toàn bộ là phân tích trên giấy: chưa có code W4.2, chưa nạp board; phần lớn thành phần WCET vẫn là ước lượng và đã gắn nhãn trong PREDICTION.
+
 ## Giới hạn kiểm chứng
 
 Build, API check và host test không chứng minh firmware chạy đúng trên phần cứng. Các kết quả phải gắn với đúng phiên bản, log hoặc ảnh đã thu. Em cần tự giải thích code và đối chiếu dự đoán với phép đo khi bảo vệ bài.
