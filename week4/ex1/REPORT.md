@@ -1,169 +1,272 @@
 # W4.1 – REPORT & TÀI LIỆU THIẾT KẾ HỆ THỐNG MIXED-CRITICALITY (DESIGN DOC)
 
-- **MSSV**: `2452882` | **Vi điều khiển**: `STM32F103C8T6` (Cortex-M3 @ 72 MHz, 20 KiB SRAM, 64 KiB Flash)
-- **Trạng thái**: Hoàn tất Thiết kế Kiến trúc, Tính toán RTA bằng tay, Ngân sách Tĩnh và Ma trận Failure Mode (0 dòng code `.c` thực thi theo đúng quy định W4.1).
-- **Nguồn dữ liệu chuẩn (Single Source of Truth)**: [include/params.h](include/params.h), [include/mixed_criticality_design.h](include/mixed_criticality_design.h), [PREDICTION.md](PREDICTION.md), [w4e1_architecture.graphml](w4e1_architecture.graphml), [w4e1_architecture.html](w4e1_architecture.html).
+- **MSSV**: `2452882` | **MCU**: `STM32F103C8T6` (Cortex-M3 @ 72 MHz, 20 KiB SRAM, 64 KiB Flash)
+- **Trạng thái**: Hoàn tất Thiết kế trên giấy (0 dòng code `.c` thực thi), đã kiểm chứng toàn bộ bảng RTA, ngân sách tĩnh và ma trận lỗi bằng `py tools/check_w4e1.py`.
+- **Single Source of Truth (SSOT)**: [include/mixed_criticality_design.h](include/mixed_criticality_design.h), [PREDICTION.md](PREDICTION.md), `include/params.h` *(sinh bởi `py tools/gen_params.py 2452882`, bị `.gitignore`)*.
+- **Sơ đồ trực quan (PDF Vector)**: [w4e1_system_architecture.pdf](w4e1_system_architecture.pdf) (Kiến trúc 4 tầng) | [w4e1_mode_switch_fsm.pdf](w4e1_mode_switch_fsm.pdf) (Máy trạng thái chuyển chế độ) | Bản tương tác: [w4e1_architecture.html](w4e1_architecture.html) & yEd: [w4e1_architecture.graphml](w4e1_architecture.graphml).
 
 ---
 
-## 1. Kết quả duyệt thiết kế & Kiến trúc Tổng thể
+## 1. Kết quả Duyệt Thiết kế, Nguồn Kế thừa (Week 1 $\rightarrow$ Week 4) & Sơ đồ Kiến trúc
 
-- **Ngày nộp design doc cho mentor**: `18/11/2026`. **Ngày được duyệt**: *(chờ mentor ký duyệt trước khi mở code W4.2)*. **Số vòng sửa nội bộ**: `1` (hiệu chỉnh từ mô hình lý tưởng chưa cộng nhiễu ISR/Bus-Recovery sang mô hình Worst-Case toàn phần khớp thực nghiệm W1–W3).
-- **Các điểm đã tự rà soát và khóa chặt định lượng trước khi trình duyệt**:
-  1. **Cô lập nhánh I2C1 Bus Recovery khỏi ISR**: Ở W2.1, chuỗi phát 9 xung SCL tốn $\approx 90\text{ }\mu\text{s}$ cộng xung START/STOP $17,75\text{ }\mu\text{s}$. Nếu đặt trong `I2C1_ER_IRQHandler`, nó sẽ chặn `TIM3_IRQHandler` và làm `control` đứt trần jitter `113 µs`. Thiết kế W4.1 chuyển toàn bộ nhánh recovery xuống **task context của `imu` (Priority 7)** với ngắt được mở, giúp `control` (Priority 8) preempt tức thời với thời gian chặn $B_{control} = 0\text{ }\mu\text{s}$.
-  2. **Giải quyết xung đột Clock Domain giữa `STOP mode` (W3.2) và `TIM3 1 kHz`**: Ở W3.2, thoát `STOP mode` và chờ thạch anh `HSE 8 MHz` + khóa lại `PLL 72 MHz` mất **$1,71\text{--}2,21\text{ ms}$**, đồng thời `STOP mode` dừng toàn bộ xung nhịp APB1/AHB (`TIM3`, `TIM2`, `DMA1`). Do đó, hook `portSUPPRESS_TICKS_AND_SLEEP` áp dụng cơ chế **Sleep Gating**: khi vòng điều khiển 1 kHz đang chạy bình thường (khoảng rảnh $< 1\text{ ms}$) hoặc DMA đang bận, hệ thống chỉ dùng lệnh `WFI` ở **`SLEEP mode`** (giữ nguyên PLL 72 MHz và các bộ định thời, trễ đánh thức $< 2\text{ }\mu\text{s}$); chỉ khi hệ thống được đưa vào trạng thái rảnh dài hạn ($\ge 5\text{ ticks}$) mới hạ xuống **`STOP mode`** qua `RTC LSI`.
+- **Ngày nộp design doc**: `18/11/2026` | **Ngày được duyệt**: *(chờ mentor duyệt trước khi mở code W4.2)* | **Số vòng tự kiểm tra**: `4` (từ bản nháp lý tưởng $\rightarrow$ đồng bộ $C_{HI}(control)=97\text{ }\mu\text{s}$ $\rightarrow$ nâng `I2C1` 400 kHz đọc 14 B & giảm vòng DMA RX 128 B $\rightarrow$ vá mask `DMA1_Ch5` khi `UART_FLOOD`, bổ sung đường `UART TX Mutex` & truy xuất nguồn từng Week).
 
-### Sơ đồ Kiến trúc Tác vụ, Phân cấp Ngắt (NVIC) và Luồng Dữ liệu IPC
+### 1.1. Bảng Truy xuất Kế thừa theo từng Tuần (Week 1 $\rightarrow$ Week 3 $\rightarrow$ Week 4)
+
+| Bài nguồn | Cơ chế / Số liệu trích xuất | Vai trò trong thiết kế W4.1 | Tiếp nối sang W4.2 – W4.4 |
+|---|---|---|---|
+| **W1.2** | DWT CYCCNT tracer (`256 × 8 B`); context switch `-O2`: `219–244 cycles` ($3,0\text{--}3,4\text{ }\mu\text{s}$) | Phân rã $C(control)$ (`+8 µs`); ngân sách RAM mục 15 (`2.304 B`) | W4.3 đo WCRT thực tế & jitter `control` |
+| **W1.3** | Công thức lặp cố định RTA (Joseph & Pandya); `SysTick` `-O2` ($\approx 6,8\text{ }\mu\text{s}$) | Chứng minh $R_i \le D_i$ ở `LO/HI/AMC-rtb` & nền ISR $2,10\%$ | W4.3 đối chiếu sai số WCRT $\le 12\%$ |
+| **W1.4** | Cấp phát tĩnh 100% (`0 malloc`), `StaticTask_t = 96 B`, `StaticQueue_t = 80 B`, MSP `1.024 B` | Bảng ngân sách RAM 18 mục = **`11.776 / 15.684 B`** | W4.2 `check_api.sh` & stack margin $\le 23\text{ w}$ |
+| **W2.1** | Driver `I2C1` EV/ER + timeout `28 ms` + recovery 9 xung SCL (`START/STOP 17,75 µs`, EV $\le 5,583\text{ }\mu\text{s}$) | Vai trò `imu` (nâng 400 kHz đọc burst 14 B), xử lý `SENSOR_UNPLUG` | W4.2 driver MPU6050; W4.3 đo CPU recovery |
+| **W2.2** | SPSC ring lock-free dùng `__DMB()` (push `29` / pop `24` cycles $\approx 0,74\text{ }\mu\text{s}$, $B=0$) | Kênh `imu` (500 Hz) $\rightarrow$ `control` (1 kHz) không khóa | W4.2 đảm bảo không blocking giữa `imu` & `control` |
+| **W2.4** | `StaticEventGroup_t` (đo `28 B`, dự trù `32 B`) & đồng bộ bit trạng thái | `StaticEventGroup` gom mặt nạ Heartbeat & bit `DEGRADED_MODE` | W4.3 `xEventGroupWaitBits` quan sát suy giảm |
+| **W3.1** | `USART1` DMA RX/TX + IDLE + `StreamBuffer` (`511 B` hữu dụng) + `TIM2` 100 kHz + CRC32 (`110 cyc/B`) | Vai trò `telemetry` (`1 Mbps`), `shell` (ring `128 B`), `TIM2`, `UART_FLOOD` | W4.2 shell/telemetry; W4.3 `vTaskGetRunTimeStats` |
+| **W3.2** | Tickless Idle + `STOP mode` qua `RTC LSI` ($\approx 40,11\text{ kHz}$), dự báo thoát STOP + PLL $1,71\text{--}2,21\text{ ms}$ | Vai trò `idle_aux` & cơ chế **Adaptive Sleep Gating** (`SLEEP` 1 ms / `STOP` $\ge 5$ ticks) | W4.2 hiện thực `portSUPPRESS_TICKS_AND_SLEEP` |
+| **W3.3** | HardFault asm+C lưu `PC/LR/CFSR` vào `.noinit` (`96 B`, canary `0x6C217697`, FNV-1a) | Ngân sách RAM mục 16 (`128 B`) & phục hồi `TASK_HANG` + IWDG $\le 296\text{ ms}$ | W4.3 ghi mã reset lý do khi IWDG nổ |
+
+### 1.2. Hai Chốt Kiến trúc Cốt lõi
+1. **Cô lập I2C1 Bus Recovery khỏi ISR (W2.1 $\rightarrow$ W4.1)**: Nếu đặt chuỗi 9 xung SCL ($\approx 90\text{ }\mu\text{s}$) + START/STOP ($17,75\text{ }\mu\text{s}$) trong `I2C1_ER_IRQHandler` (NVIC 6), dù `TIM3_IRQHandler` (NVIC 5) chen ngang được nhưng **task `control`** vẫn bị kẹt tới khi ISR $\approx 120\text{ }\mu\text{s}$ kết thúc $\Rightarrow$ vượt trần jitter `113 µs`. Do đó toàn bộ nhánh recovery chạy ở **ngữ cảnh task `imu` (P7)** với ngắt mở; `control` (P8) preempt tức thời (chỉ còn các critical section ngắn của kernel FreeRTOS, đo bằng DWT ở W4.3).
+2. **Adaptive Sleep Gating (`SLEEP` vs `STOP`, W3.2 $\rightarrow$ W4.1)**: Dự báo W3.2 cho thấy thoát `STOP mode` + khóa `HSE/PLL 72 MHz` mất $1,71\text{--}2,21\text{ ms}$ và `STOP` dừng clock APB (`TIM3`, `TIM2`, `DMA1`). Vì vậy giữa các nhịp 1 ms của `control` (hoặc khi DMA bận), `portSUPPRESS_TICKS_AND_SLEEP` chỉ chạy `WFI` ở **`SLEEP mode`** (trễ $< 2\text{ }\mu\text{s}$); chỉ vào **`STOP mode`** (đánh thức bởi `RTC Alarm` EXTI17) khi hệ thống rảnh dài hạn $\ge 5\text{ ticks}$.
+
+### 1.3. Sơ đồ Kiến trúc & Máy Trạng thái Chuyển Chế độ
+*(Bản in vector sắc nét đầy đủ xem tại [w4e1_system_architecture.pdf](w4e1_system_architecture.pdf) và [w4e1_mode_switch_fsm.pdf](w4e1_mode_switch_fsm.pdf).)*
+
+- Quy ước: Mọi ISR gọi `...FromISR` có NVIC $\ge 5$ (`configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY = 5`). `HB` = task tự set bit heartbeat vào `StaticEventGroup` (tách riêng sang sơ đồ (b) để tránh giao cắt $K_{2,2}$). `TIM3` đặt lệch pha `SysTick` ($\approx +500\text{ }\mu\text{s}$) và đánh thức `imu` mỗi 2 tick (`notify ÷2`) ngay sau `control` để giao dịch I2C1 kết thúc trước mốc 1 ms kế tiếp.
+
+**(a) Data plane**
 
 ```mermaid
+%%{init: {"flowchart": {"curve": "step", "nodeSpacing": 26, "rankSpacing": 44, "padding": 10}}}%%
 flowchart TB
-    subgraph HW["Tầng Phần cứng & Ngắt (NVIC Priority < configMAX_SYSCALL_INTERRUPT_PRIORITY)"]
-        TIM3["TIM3 Compare ISR\n(1 kHz | NVIC Prio 5 | C = 4 us)"]
-        I2C_ISR["I2C1 EV/ER ISR (W2.1)\n(500 Hz burst | NVIC Prio 6 | C <= 35 us)"]
-        UART_ISR["USART1 IDLE + DMA1 Ch4/Ch5 ISR (W3.1)\n(1 Mbps | NVIC Prio 7 | C <= 16 us)"]
-        TIM2["TIM2 Overflow ISR (W3.1)\n(100 kHz counter | NVIC Prio 8 | C = 2 us)"]
-        RTC_ISR["RTC Alarm EXTI17 ISR (W3.2)\n(Tickless Wakeup | NVIC Prio 9)"]
+    subgraph L1[" "]
+        T1["<b>1 · HARDWARE ISRs</b><br/>NVIC prio ≥ 5"]:::lane
+        URX["USART1 RX ISR (W3.1)<br/>IDLE + DMA1_Ch5 · ≤16 µs"]:::hw
+        TIM3["TIM3 CC ISR (W1.1)<br/>1 kHz · 4 µs"]:::hw
+        I2C["I2C1 EV/ER ISR (W2.1)<br/>400 kHz · 19 × ≤5,58 µs"]:::hw
+        UTX["DMA1_Ch4 TX ISR (W3.1)<br/>TC · 1 Mbps · UART1 TX"]:::hw
     end
-
-    subgraph HI_CRIT["Miền Tác vụ HI-Criticality (Bảo vệ Tuyệt đối trong cả LO-Mode & HI-Mode)"]
-        CTRL["ROLE 0: control\nPrio 8 | T = 1000 us | D = 1000 us\nC_LO = 70 us | C_HI = 90 us | R_HI = 90 us\nStack: 192 words (768 B)"]
-        IMU["ROLE 1: imu (MPU6050 Driver W2.1)\nPrio 7 | T = 2000 us | D = 2000 us\nC_LO = 140 us | C_HI = 260 us | R_HI = 350 us\nStack: 192 words (768 B)"]
+    subgraph L2[" "]
+        T2["<b>2 · HI-CRIT TASKS</b><br/>kept in LO & HI"]:::lane
+        CTRL["<b>control</b> · P8 · HB<br/>T 1000 / D 1000 µs<br/>C_HI 97 / R_HI 97 µs<br/>Stack 192 w (768 B)"]:::hi
+        IMU["<b>imu</b> · P7 · HB (W2.1)<br/>T 2000 / D 2000 µs<br/>C_HI 332 / R_HI 429 µs<br/>Stack 192 w (768 B)"]:::hi
     end
-
-    subgraph IPC["Tầng Đồng bộ & Giao tiếp Tĩnh 100% (Static IPC - Zero Heap)"]
-        SPSC[["IMU SPSC / Seqlock Snapshot (W2.2)\nw4e2_imu_sample_t | 16 slots (512 B)\nLock-free O(1) | Blocking B = 0 us"]]
-        STATUS[["Atomic System Status & Tunables\nw4e2_system_status_t\ntelemetry_period_ms | overrun | stale_cnt"]]
-        SBUF[["USART1 RX Static StreamBuffer (W3.1)\nCapacity: 512 B | Trigger: 1 B"]]
-        EGRP[["Fault & Heartbeat StaticEventGroup\nBIT_DEGRADED_MODE | BIT_WDG_RECOVERED\n5-bit Task Liveness Mask"]]
-        NOINIT[[".noinit Post-Mortem Record (W3.3)\n128 B | Canary 0x6C217697 + FNV-1a\nPC, LR, CFSR, Reset Reason"]]
+    subgraph L3[" "]
+        T3["<b>3 · STATIC IPC</b><br/>zero heap (W1.4)"]:::lane
+        SBUF[("RX StreamBuffer (W3.1)<br/>512 B (511 usable)")]:::ipc
+        STAT[("system_status_t + TX Mutex<br/>period/overrun/stale · 2×80 B")]:::ipc
+        SPSC[("IMU SPSC seqlock (W2.2)<br/>16 × 32 B lock-free")]:::ipc
     end
-
-    subgraph LO_CRIT["Miền Tác vụ LO-Criticality (Hạ tải / Đình chỉ có kiểm soát khi sang HI-Mode)"]
-        TELEM["ROLE 2: telemetry\nPrio 5 | T = 10000 us | D = 10000 us\nC_LO = 180 us | R_HI = 530 us\nStack: 192 words (768 B)"]
-        SHELL["ROLE 3: shell\nPrio 3 | T_min = 50000 us | D = 200000 us\nC_LO = 420 us | R_HI = 950 us\nStack: 256 words (1024 B)"]
-        IDLE_AUX["ROLE 4: idle_aux\nPrio 2 | T = 100000 us | D = 100000 us\nC_LO = 250 us | R_HI = 1290 us\nStack: 192 words (768 B)"]
+    subgraph L4[" "]
+        T4["<b>4 · LO-CRIT TASKS</b><br/>shed in HI mode"]:::lane
+        SHELL["<b>shell</b> · P3 · HB (W3.1)<br/>T_min 50000 / D 200000 µs<br/>C_HI 420 / R_HI 1126 µs<br/>Stack 256 w (1024 B)"]:::lo
+        TEL["<b>telemetry</b> · P5 · HB (W3.1)<br/>T 10000 / D 10000 µs<br/>C_HI 180 / R_HI 609 µs<br/>Stack 192 w (768 B)"]:::lo
     end
-
-    TIM3 -->|"vTaskNotifyGiveFromISR()"| CTRL
-    I2C_ISR -->|"xTaskNotifyFromISR() (EV/ER)"| IMU
-    IMU -->|"spsc_push() + __DMB()"| SPSC
-    SPSC -->|"spsc_read_latest() (0 lock)"| CTRL
-    CTRL -->|"Update overrun/stale"| STATUS
-    UART_ISR -->|"xStreamBufferSendFromISR()"| SBUF
-    SBUF -->|"xStreamBufferReceive()"| SHELL
-    SHELL -->|"Tune telemetry_period_ms"| STATUS
-    STATUS -->|"Read snapshot"| TELEM
-    TELEM -->|"DMA1_Channel4 TX (1 Mbps)"| UART_ISR
-    CTRL & IMU & TELEM & SHELL -->|"xEventGroupSetBits() Heartbeat"| EGRP
-    EGRP -->|"xEventGroupWaitBits() Check & Mode Switch"| IDLE_AUX
-    TIM2 -->|"uxTaskGetSystemState() Counter"| IDLE_AUX
-    RTC_ISR -->|"Exit STOP + Restore PLL 72MHz"| IDLE_AUX
-    IDLE_AUX -->|"Feed IWDG (< 296 ms) / Log Fault"| NOINIT
+    URX -->|SB send ISR| SBUF
+    TIM3 -->|notify| CTRL
+    TIM3 -->|"notify ÷2"| IMU
+    I2C -->|notify EV/ER| IMU
+    CTRL -->|overrun/stale| STAT
+    CTRL ---|read latest| SPSC
+    IMU -->|push| SPSC
+    UTX <-->|"DMA TX / TC (Mutex)"| TEL
+    SBUF -->|receive| SHELL
+    STAT <-->|"get / set + TX reply"| SHELL
+    STAT -->|snapshot| TEL
+    classDef lane fill:none,stroke:none,font-size:12px
+    classDef hw fill:#FFF4D6,stroke:#C98A00,color:#4A3300
+    classDef hi fill:#FDE3E3,stroke:#C62828,color:#5B0E0E
+    classDef ipc fill:#E4F3EA,stroke:#2E7D4F,color:#0F3B22
+    classDef lo fill:#E3ECFB,stroke:#1F5FBF,color:#0C2A57
+    style L1 fill:#FFFBF0,stroke:#E0B44C,stroke-dasharray:5 4
+    style L2 fill:#FFF6F6,stroke:#E19A9A,stroke-dasharray:5 4
+    style L3 fill:#F4FAF6,stroke:#8CC3A2,stroke-dasharray:5 4
+    style L4 fill:#F5F8FE,stroke:#93B3E6,stroke-dasharray:5 4
 ```
 
-### Máy Trạng thái Chuyển Chế độ (Mixed-Criticality Mode-Switch FSM)
+**(b) Supervision plane** (Heartbeat W2.4, Run-time stats W3.1, Tickless W3.2, Watchdog & `.noinit` W3.3)
 
 ```mermaid
-stateDiagram-v2
-    [*] --> LO_MODE: Boot + Read .noinit + Init Static Tasks
-    LO_MODE: LO-Criticality Mode (Nominal)\n- All 5 tasks active (U_LO = 16.89%)\n- control: C=70us, R=70us <= 113us\n- imu: C=140us, R=210us\n- telemetry (100Hz), shell (active), idle_aux (SLEEP/STOP enabled)
-    HI_MODE: HI-Criticality / Degraded Mode\n- Set W4E3_BIT_DEGRADED_MODE_ENTERED\n- Shed/Throttle LO tasks (shell & telemetry suspended/throttled)\n- Lock out STOP mode (keep PLL 72MHz hot)\n- control: C_HI=90us, R_HI=90us (Safe-Hold if IMU stale)\n- imu: C_HI=260us (9-pulse SCL recovery in task ctx), R_HI=350us
-    FAULT_RESET: Post-Mortem & Watchdog Reset\n- Write PC/LR/CFSR/Reason to .noinit (Canary 0x6C217697)\n- IWDG / NVIC_SystemReset() within <= 296 ms
+%%{init: {"flowchart": {"curve": "stepBefore", "nodeSpacing": 26, "rankSpacing": 44, "padding": 10}}}%%
+flowchart TB
+    subgraph L1[" "]
+        T1["<b>1 · HARDWARE</b><br/>timers / watchdog"]:::lane
+        TIM2["TIM2 counter (W3.1)<br/>100 kHz run-time"]:::hw
+        RTC["RTC Alarm (W3.2)<br/>EXTI17 · STOP wake"]:::hw
+        IWDG["IWDG (W4.3)<br/>timeout ≤ 296 ms"]:::hw
+    end
+    subgraph L2[" "]
+        T2["<b>2 · HI-CRIT TASKS</b>"]:::lane
+        CTRL["<b>control</b> · P8"]:::hi
+        IMU["<b>imu</b> · P7"]:::hi
+    end
+    subgraph L3[" "]
+        T3["<b>3 · STATIC IPC</b>"]:::lane
+        EGRP[("StaticEventGroup (W2.4)<br/>HB bits · DEGRADED")]:::ipc
+        NOINIT[(".noinit record (W3.3)<br/>128 B · 0x6C217697")]:::ipc
+    end
+    subgraph L4[" "]
+        T4["<b>4 · LO-CRIT TASKS</b>"]:::lane
+        SHELL["<b>shell</b> · P3"]:::lo
+        TEL["<b>telemetry</b> · P5"]:::lo
+        IDLE["<b>idle_aux</b> · P2 · LO (W3.2)<br/>T 100000 / D 100000 µs<br/>C_HI 250 / R_HI 1376 µs<br/>Stack 192 w (768 B)"]:::lo
+    end
+    T1 ~~~ T2
+    TIM2 ~~~ CTRL
+    RTC ~~~ IMU
+    IWDG ~~~ IMU
+    CTRL -.-|"HB / Jitter"| EGRP
+    IMU -.-|"HB / Unplug"| EGRP
+    EGRP -.-|"HB / Flood"| SHELL
+    EGRP -.-|HB| TEL
+    EGRP -.->|check mask| IDLE
+    NOINIT <-.->|"log / dump"| IDLE
+    TIM2 -.->|run-time ctr| IDLE
+    RTC -.->|STOP wake| IDLE
+    IWDG <-.->|"kick / reset"| IDLE
+    classDef lane fill:none,stroke:none,font-size:12px
+    classDef hw fill:#FFF4D6,stroke:#C98A00,color:#4A3300
+    classDef hi fill:#FDE3E3,stroke:#C62828,color:#5B0E0E
+    classDef ipc fill:#E4F3EA,stroke:#2E7D4F,color:#0F3B22
+    classDef lo fill:#E3ECFB,stroke:#1F5FBF,color:#0C2A57
+    style L1 fill:#FFFBF0,stroke:#E0B44C,stroke-dasharray:5 4
+    style L2 fill:#FFF6F6,stroke:#E19A9A,stroke-dasharray:5 4
+    style L3 fill:#F4FAF6,stroke:#8CC3A2,stroke-dasharray:5 4
+    style L4 fill:#F5F8FE,stroke:#93B3E6,stroke-dasharray:5 4
+```
 
-    LO_MODE --> HI_MODE: SENSOR_UNPLUG (I2C timeout > 28ms / AF)\nor UART_FLOOD (StreamBuffer drop > 0)\nor CPU_OVERLOAD (U > 76% or Jitter > 100us)
-    HI_MODE --> LO_MODE: Fault cleared for >= 10 consecutive cycles\n& CPU load < 50% (Set BIT_WATCHDOG_RECOVERED)
-    LO_MODE --> FAULT_RESET: TASK_HANG (Heartbeat missed > 100ms)\nor HardFault
-    HI_MODE --> FAULT_RESET: Unrecoverable Hang > 296 ms (IWDG fires)
-    FAULT_RESET --> LO_MODE: Reboot & Dump .noinit Record
+**(c) Máy Trạng thái Chuyển Chế độ (LO-Mode $\leftrightarrow$ HI-Mode $\leftrightarrow$ Watchdog Reset)**
+
+```mermaid
+%%{init: {"flowchart": {"curve": "step", "nodeSpacing": 56, "rankSpacing": 68, "padding": 12}}}%%
+flowchart LR
+    S0(( )):::start -->|boot| LO
+    LO("<b>LO-MODE (nominal)</b><br/>5 tasks · U_tasks = 18,14 % (+2,10 % ISR)<br/>R ctrl 70 · imu 235 µs<br/>idle: SLEEP / gated STOP"):::lo
+    HI("<b>HI-MODE (degraded)</b><br/>DEGRADED bit · shed tel+shell<br/>R ctrl 97 · imu 429 µs<br/>STOP locked · U_tasks = 26,38 % (+2,10 % ISR)"):::hi
+    RST("<b>WATCHDOG RESET</b><br/>.noinit PC/LR/CFSR + reason (W3.3)<br/>IWDG reset ≤ 296 ms"):::rst
+    LO -->|"SENSOR_UNPLUG · UART_FLOOD<br/>CPU_OVERLOAD (>100 µs | >76 %)"| HI
+    HI -->|"cleared ≥ 10 cycles<br/>and U_total < 50 %"| LO
+    LO -->|"TASK_HANG<br/>HardFault"| RST
+    HI -->|"hang > 296 ms<br/>IWDG fires"| RST
+    RST -->|"reboot +<br/>dump .noinit"| S0
+    classDef start fill:#333,stroke:#333
+    classDef lo fill:#E3ECFB,stroke:#1F5FBF,color:#0C2A57
+    classDef hi fill:#FDE3E3,stroke:#C62828,color:#5B0E0E
+    classDef rst fill:#ECE7F6,stroke:#5E35B1,color:#24104F
 ```
 
 ---
 
-## 2. Số đo / Đối chiếu Bảng RTA và Ngân sách Tài nguyên
+## 2. Bảng RTA, Ngân sách Tài nguyên Tĩnh & Ma trận Failure Mode
 
-### 2.1. Bảng Phân tích Lập lịch (Response Time Analysis – RTA)
-Bảng dưới đây trình bày song song hai chế độ vận hành: **`LO-Mode` (Danh định)** và **`HI-Stress / Worst-Case` (Tất cả tác vụ chạy ở $C_{HI}$ kèm nhánh phục hồi lỗi)** — các con số cột `HI-Stress` được niêm yết chính thức trong `W4E1_RTA_TABLE` tại [include/mixed_criticality_design.h](include/mixed_criticality_design.h):
+### 2.1. Bảng RTA (`LO-Mode` vs `HI-Stress / Worst-Case` — khớp `W4E1_RTA_TABLE`)
 
-| Vai trò (`w4e1_task_role_t`) | Mức độ (`Crit`) | Priority | $T_i$ ($\mu\text{s}$) | $D_i$ ($\mu\text{s}$) | $C_{i,LO}$ ($\mu\text{s}$) | $R_{i,LO}$ ($\mu\text{s}$) | $C_{i,HI}$ (`wcet_us`) | $R_{i,HI}$ (`response_time_us`) | Biên $D_i - R_{i,HI}$ ($\mu\text{s}$) | Tải $U_{i,LO}$ (%) | Tải $U_{i,HI}$ (%) |
+| Vai trò (`w4e1_task_role_t`) | Crit | Prio | $T_i$ ($\mu\text{s}$) | $D_i$ ($\mu\text{s}$) | $C_{i,LO}$ ($\mu\text{s}$) | $R_{i,LO}$ ($\mu\text{s}$) | $C_{i,HI}$ (`wcet_us`) | $R_{i,HI}$ (`response_time_us`) | Biên $D_i - R_{i,HI}$ ($\mu\text{s}$) | $U_{i,LO}$ (%) | $U_{i,HI}$ (%) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `W4E1_ROLE_CONTROL` (`control`) | **HI** | **8** | 1.000 | 1.000 | 70 | 70 | **90** | **90** | **910** *(Jitter: 23)* | 7,00% | 9,00% |
-| `W4E1_ROLE_IMU` (`imu`) | **HI** | **7** | 2.000 | 2.000 | 140 | 210 | **260** | **350** | **1.650** | 7,00% | 13,00% |
-| `W4E1_ROLE_TELEMETRY` (`telemetry`) | **LO** | **5** | 10.000 | 10.000 | 180 | 390 | **180** *(Shed: 0)* | **530** | **9.470** | 1,80% | 1,80% *(0%)* |
-| `W4E1_ROLE_SHELL` (`shell`) | **LO** | **3** | 50.000 | 200.000 | 420 | 810 | **420** *(Shed: 0)* | **950** | **199.050** | 0,84% | 0,84% *(0%)* |
-| `W4E1_ROLE_IDLE_AUX` (`idle_aux`) | **LO** | **2** | 100.000 | 100.000 | 250 | 1.130 | **250** *(HI: 80)* | **1.290** | **98.710** | 0,25% | 0,25% *(0,08%)* |
-| **Tổng 5 Task** | — | — | — | — | — | — | — | — | **Mọi $R_i \le D_i$** | **16,89%** | **24,89%** *(HI-shed: 22,08%)* |
-| **Nền ISR độc lập (`SysTick` + `TIM2`)** | — | NVIC | 1.000 | — | 21 | — | **21** | — | — | **2,11%** | **2,11%** |
-| **Tổng toàn hệ thống** | — | — | — | — | — | — | — | — | **Trần: $\le 76\%$** | **19,00%** | **27,00%** |
+| `W4E1_ROLE_CONTROL` (`control`) | **HI** | **8** | 1.000 | 1.000 | 70 | 70 | **97** | **97** | **903** *(Jitter: 16)* | 7,00% | 9,70% |
+| `W4E1_ROLE_IMU` (`imu`) | **HI** | **7** | 2.000 | 2.000 | 165 | 235 | **332** | **429** | **1.571** *(E2E: 862 $\rightarrow$ 1.138)* | 8,25% | 16,60% |
+| `W4E1_ROLE_TELEMETRY` (`telemetry`) | **LO** | **5** | 10.000 | 10.000 | 180 | 415 | **180** *(Shed: 0)* | **609** | **9.391** | 1,80% | 1,80% *(0%)* |
+| `W4E1_ROLE_SHELL` (`shell`) | **LO** | **3** | 50.000 | 200.000 | 420 | 835 | **420** *(Shed: 0)* | **1.126** | **198.874** | 0,84% | 0,84% *(0%)* |
+| `W4E1_ROLE_IDLE_AUX` (`idle_aux`) | **LO** | **2** | 100.000 | 100.000 | 250 | 1.155 | **250** *(HI: 80)* | **1.376** | **98.624** | 0,25% | 0,25% *(0,08%)* |
+| **Tổng 5 Task** | — | — | — | — | — | — | — | — | **Mọi $R_i \le D_i$** | **18,14%** | **29,19%** *(HI-shed: 26,38%)* |
+| **Nền ISR (`SysTick` W1.3 + `TIM2` W3.1)** | — | NVIC | 1.000 | — | 21 | — | **21** | — | — | **2,10%** | **2,10%** |
+| **Tổng toàn hệ thống** | — | — | — | — | — | — | — | — | **Trần: $\le 76\%$** | **20,24%** | **31,29%** |
 
-#### Kiểm chứng điều kiện chuyển chế độ AMC-rtb (Adaptive Mixed-Criticality Response-Time Bound)
-Khi sự cố xảy ra ở thời điểm bất kỳ trong `LO-Mode` kích hoạt chuyển sang `HI-Mode`, thời gian phản hồi quá độ $R_i^*$ của các tác vụ `HI-Criticality` (`control` và `imu`) được tính theo công thức AMC-rtb:
-1. **Với `control` (Priority 8)**: Không bị bất kỳ task nào ưu tiên thấp hơn chiếm quyền và $B_{control} = 0\text{ }\mu\text{s}$:
-   $$R_{control}^* = C_{control,HI} = \mathbf{90\text{ }\mu\text{s}} \le W4E1\_CONTROL\_LOOP\_JITTER\_MAX\_US\text{ }(113\text{ }\mu\text{s}) < D_{control}\text{ }(1.000\text{ }\mu\text{s})$$
-2. **Với `imu` (Priority 7)**: Chỉ chịu nhiễu từ `control`:
-   $$R_{imu}^* = C_{imu,HI} + \left\lceil \frac{R_{imu}^*}{T_{control}} \right\rceil C_{control,HI} = 260 + \left\lceil \frac{350}{1000} \right\rceil \times 90 = \mathbf{350\text{ }\mu\text{s}} \le D_{imu}\text{ }(2.000\text{ }\mu\text{s})$$
+- **Kiểm chứng chuyển chế độ AMC-rtb**: Do không có task `LO` nào ưu tiên cao hơn `HI` ($hpL = \emptyset$), công thức $R_i^* = C_i(HI) + \sum_{j \in hpH(i)} \lceil R_i^*/T_j \rceil C_j(HI) + \sum_{k \in hpL(i)} \lceil R_i(LO)/T_k \rceil C_k(LO)$ rút gọn về $R_{control}^* = \mathbf{97\text{ }\mu\text{s}} \le 113\text{ }\mu\text{s}$ và $R_{imu}^* = 332 + \lceil 429/1000 \rceil \times 97 = \mathbf{429\text{ }\mu\text{s}} \le 2.000\text{ }\mu\text{s}$.
+- **Kiểm tra chờ bus `imu` (suspension-oblivious, $S = 433\text{ }\mu\text{s}$ ở I2C1 400 kHz)**: $R_{imu}^{e2e} = 332 + 433 + \lceil R/1000 \rceil \times 97 \Rightarrow \mathbf{862\text{ }\mu\text{s}} \le 2.000\text{ }\mu\text{s}$. Jitter hoàn tất $J_{imu} = 530\text{ }\mu\text{s}$ không làm đổi $R$ của `telemetry`, `shell`, `idle_aux`.
 
 ### 2.2. Bảng Ngân sách RAM Tĩnh 100% (`W4E1_RAM_BUDGET_TABLE`)
-Toàn bộ hệ thống sử dụng `configSUPPORT_STATIC_ALLOCATION = 1` và `configSUPPORT_DYNAMIC_ALLOCATION = 0` (kế thừa W1.4 với `sizeof(StaticTask_t) = 96 B`, `sizeof(StaticSemaphore_t) = 80 B`, `sizeof(StaticStreamBuffer_t) = 80 B`, `sizeof(StaticEventGroup_t) = 32 B`):
+*(Đặt `configSUPPORT_STATIC_ALLOCATION = 1`, `configSUPPORT_DYNAMIC_ALLOCATION = 0`; `StaticTask_t = 96 B` và `StaticQueue_t = 80 B` đo ở W1.4; `StaticStreamBuffer_t = 80 B`, `StaticEventGroup_t = 32 B` là cận trên bảo thủ so với `28 B` đo ở W2.4.)*
 
-| STT | Tên đối tượng trong `W4E1_RAM_BUDGET_TABLE` | Diễn giải kích thước & Căn chỉnh (8-byte aligned) | Dung lượng (Bytes) | Tỷ lệ / Ngân sách |
-|---:|---|---|---:|---:|
-| 1 | `control_task_stack (192 words)` | $192\text{ words} \times 4\text{ B}$ (dự kiến dùng ~110w, dư ~82w) | 768 | 4,90% |
-| 2 | `imu_task_stack (192 words)` | $192\text{ words} \times 4\text{ B}$ (FSM I2C1 + Bus Recovery) | 768 | 4,90% |
-| 3 | `telemetry_task_stack (192 words)` | $192\text{ words} \times 4\text{ B}$ (Đóng gói khung + CRC32 + DMA TX) | 768 | 4,90% |
-| 4 | `shell_task_stack (256 words)` | $256\text{ words} \times 4\text{ B}$ (Parser lệnh + xử lý `reply_buf`) | 1.024 | 6,53% |
-| 5 | `idle_aux_task_stack (192 words)` | $192\text{ words} \times 4\text{ B}$ (Run-time stats + IWDG + Tickless) | 768 | 4,90% |
-| 6 | `freertos_idle_and_timer_stacks (2x128w)` | $2 \times 128\text{ words} \times 4\text{ B}$ (Idle Task + Timer Daemon W1.4) | 1.024 | 6,53% |
-| 7 | `static_task_tcbs (7x96B StaticTask_t)` | $7\text{ tasks} \times 96\text{ B}$ (`StaticTask_t` thực đo ở W1.4) | 672 | 4,28% |
-| 8 | `uart1_rx_dma_ring_buf (DMA1_Ch5)` | Bộ đệm vòng DMA nhận `USART1` (chuẩn W3.1) | 256 | 1,63% |
-| 9 | `uart1_rx_stream_buf_storage (W3.1)` | Vùng nhớ `StreamBuffer` (511 B hữu dụng + 1 B sentinel) | 512 | 3,26% |
-| 10 | `uart1_tx_dma_pingpong_buf (DMA1_Ch4)` | Bộ đệm kép $2 \times 128\text{ B}$ phát DMA 1 Mbps không chờ | 256 | 1,63% |
-| 11 | `i2c1_trx_and_recovery_ctx (W2.1)` | Bộ đệm khung đọc/ghi MPU6050 + biến trạng thái FSM I2C1 | 64 | 0,41% |
-| 12 | `imu_spsc_snapshot_ring (16x32B W2.2)` | 16 ô $\times 32\text{ B}$ lưu `w4e2_imu_sample_t` (28 B + 4 B seq) | 512 | 3,26% |
-| 13 | `shell_cmd_and_reply_buf (2x128B)` | Bộ đệm dòng lệnh `cmd_line` (128 B) + `reply_buf` (128 B) | 256 | 1,63% |
-| 14 | `static_ipc_control_blocks (Sem/SB/EG)` | 2 `StaticSemaphore_t` (160 B) + 1 `StaticStreamBuffer_t` (80 B) + 1 `StaticEventGroup_t` (32 B) + SPSC index (16 B) | 288 | 1,84% |
-| 15 | `runtime_stats_and_dwt_trace_buf` | Mảng `TaskStatus_t` + mẫu WCRT/Jitter + 256 sự kiện DWT (W1.2) | 2.304 | 14,69% |
-| 16 | `noinit_postmortem_and_wdg_record (W3.3)` | Section `.noinit` lưu `fault_record_t` (96 B) + lý do reset IWDG (32 B) | 128 | 0,82% |
-| 17 | `kernel_and_system_globals (.data/.bss)` | Biến scheduler/timer FreeRTOS (436 B ở W1.4) + `w4e2_system_status_t` (76 B) | 512 | 3,26% |
-| 18 | `msp_isr_stack_reserve (_Min_Stack_Size)` | Ngăn xếp chính `MSP` dùng cho các ngắt phần cứng (chuẩn W1.4) | 1.024 | 6,53% |
-| — | **TỔNG RAM TĨNH THIẾT KẾ** | **Đạt chuẩn `< W4E1_RAM_BUDGET_BYTES` (15.684 B)** | **11.904** | **75,90%** |
-| — | **Biên an toàn RAM còn dư (Margin)** | $15.684 - 11.904\text{ B}$ *(Còn dư $8.576\text{ B}$ so với 20 KiB vật lý)* | **+3.780** | **+24,10%** |
+| # | Tên hạng mục (`W4E1_RAM_BUDGET_TABLE`) | Nguồn Week | Diễn giải kích thước | Bytes | % Ngân sách |
+|---:|---|---|---|---:|---:|
+| 1 | `control_task_stack (192w, W1.4)` | **W1.4** | $192 \times 4\text{ B}$ (dự kiến dùng ~110w) | 768 | 4,90% |
+| 2 | `imu_task_stack (192w, W1.4/W2.1)` | **W1.4 / W2.1** | $192 \times 4\text{ B}$ (FSM I2C1 + recovery) | 768 | 4,90% |
+| 3 | `telemetry_task_stack (192w, W1.4/W3.1)` | **W1.4 / W3.1** | $192 \times 4\text{ B}$ (CRC32 + DMA TX) | 768 | 4,90% |
+| 4 | `shell_task_stack (256w, W1.4/W3.1)` | **W1.4 / W3.1** | $256 \times 4\text{ B}$ (Parser + `reply_buf`) | 1.024 | 6,53% |
+| 5 | `idle_aux_task_stack (192w, W1.4/W3.2)` | **W1.4 / W3.2** | $192 \times 4\text{ B}$ (Stats + IWDG + Sleep) | 768 | 4,90% |
+| 6 | `freertos_idle_and_timer_stacks (2x128w, W1.4)` | **W1.4** | $2 \times 128 \times 4\text{ B}$ (Idle + Timer daemon) | 1.024 | 6,53% |
+| 7 | `static_task_tcbs (7x96B StaticTask_t, W1.4)` | **W1.4** | $7 \times 96\text{ B}$ (5 user + Idle + Timer) | 672 | 4,28% |
+| 8 | `uart1_rx_dma_ring_buf (DMA1_Ch5 2x64B, W3.1)` | **W3.1** | Vòng DMA RX 128 B (HT/TC mỗi 64 B $\le 13,7\text{ }\mu\text{s}$) | 128 | 0,82% |
+| 9 | `uart1_rx_stream_buf_storage (511+1B, W3.1)` | **W3.1** | `StreamBuffer` (511 B hữu dụng + 1 B sentinel) | 512 | 3,26% |
+| 10 | `uart1_tx_dma_pingpong_buf (DMA1_Ch4, W3.1)` | **W3.1** | Bộ đệm kép $2 \times 128\text{ B}$ phát 1 Mbps | 256 | 1,63% |
+| 11 | `i2c1_trx_and_recovery_ctx (W2.1)` | **W2.1** | Buffer burst 14 B + trạng thái FSM I2C1 | 64 | 0,41% |
+| 12 | `imu_spsc_snapshot_ring (16x32B, W2.2)` | **W2.2** | $16 \times 32\text{ B}$ (`w4e2_imu_sample_t` 28 B + 4 B seq) | 512 | 3,26% |
+| 13 | `shell_cmd_and_reply_buf (2x128B, W4.2)` | **W4.2** | `cmd_line` (128 B) + `reply_buf` (128 B) | 256 | 1,63% |
+| 14 | `static_ipc_control_blocks (2xSem/SB/EG, W1.4-3.1)` | **W1.4/2.4/3.1** | 2 `StaticSemaphore_t` (I2C1 + UART TX: 160 B) + SB (80 B) + EG (32 B) + SPSC hdr (16 B) | 288 | 1,84% |
+| 15 | `runtime_stats_and_dwt_trace_buf (W1.2/W4.3)` | **W1.2 / W4.3** | `TaskStatus_t` + mẫu WCRT + 256 sự kiện DWT | 2.304 | 14,69% |
+| 16 | `noinit_postmortem_and_wdg_record (W3.3)` | **W3.3** | `.noinit`: `fault_record_t` (96 B) + IWDG reason (32 B) | 128 | 0,82% |
+| 17 | `kernel_and_system_globals (.data/.bss, W1.4)` | **W1.4 / W4.2** | FreeRTOS lists (436 B) + `w4e2_system_status_t` (12 B) + dự phòng (64 B) | 512 | 3,26% |
+| 18 | `msp_isr_stack_reserve (_Min_Stack_Size, W1.4)` | **W1.4** | Ngăn xếp `MSP` cho các ngắt phần cứng | 1.024 | 6,53% |
+| — | **TỔNG RAM TĨNH / BIÊN DƯ (`W4E1_RAM_BUDGET_BYTES = 15.684 B`)** | — | **Đạt (còn dư 3.908 B so với ngân sách; dư 8.704 B so với 20 KiB SRAM)** | **11.776** | **75,08%** |
 
 ### 2.3. Ma trận Failure Mode & Suy giảm Có kiểm soát (`W4E1_FAILURE_MODE_TABLE`)
 
-| Kịch bản lỗi (`W4.3`) | Tài nguyên bị tác động | Cơ chế phát hiện & Độ trễ phát hiện (Detection Latency) | Phản ứng cô lập & Chế độ suy giảm có kiểm soát (Controlled Response) | Ảnh hưởng tới `control` (1 kHz) |
-|---|---|---|---|---|
-| **`SENSOR_UNPLUG`** | Bus `I2C1` (PB6/PB7) & Cảm biến `MPU6050` | 1) Ngắt `I2C1_ER_IRQn` bắt cờ `AF / BERR / ARLO` tức thời ($< 10\text{ }\mu\text{s}$) hoặc `ulTaskNotifyTake` quá hạn `28 ms` (W2.1).<br>2) `control` kiểm tra `xTaskGetTickCount() - sample_tick > 2 ms` và tăng `imu_stale_count`. | - Bật bit `W4E3_BIT_DEGRADED_MODE_ENTERED` trên EventGroup.<br>- Task `imu` (Prio 7) chạy tối đa 9 xung SCL recovery (W2.1) trong ngữ cảnh task (mở ngắt).<br>- `control` (Prio 8) đọc không khóa, giữ nguyên tư thế an toàn (safe-hold) khi mẫu cũ. | **0 trễ deadline** ($R_{control} = 90\text{ }\mu\text{s} \le 113\text{ }\mu\text{s}$). |
-| **`UART_FLOOD`** | `USART1 RX`, `DMA1_Ch5` & `StreamBuffer` | 1) `xStreamBufferSendFromISR` trả về số byte ghi $< \text{len}$ (`dropped > 0`) hoặc cờ `USART1->SR` báo `ORE / FE / NE`.<br>2) Thời gian xử lý dòng lệnh vượt `W4E2_SHELL_CMD_TIMEOUT_MS` (**200 ms**). | - Bật bit `W4E3_BIT_DEGRADED_MODE_ENTERED`.<br>- Tắt tạm thời ngắt `USART1_CR1_IDLEIE` & `DMA1_Channel5` trong `50 ms` (cooldown) để dập bão ngắt.<br>- Xóa khung lỗi, đình chỉ `shell` và giảm tần số `telemetry` xuống 10 Hz. | **0 trễ deadline** (Cắt bão ISR trước khi ăn vào trần jitter $113\text{ }\mu\text{s}$). |
-| **`CPU_OVERLOAD`** | Ngân sách CPU (76%) & Trần Jitter `TIM3` ($113\text{ }\mu\text{s}$) | 1) Bộ đo `DWT->CYCCNT` đầu/cuối chu kỳ `control` phát hiện jitter $> 100\text{ }\mu\text{s}$ hoặc WCRT tăng $> 12\%$ so với RTA.<br>2) `TIM2` 100 kHz báo tổng tải CPU $> 76\%$. | - Chuyển tức thời sang **`HI-Criticality Mode`**: Đình chỉ 2 task `LO-Criticality` (`shell` Prio 3, `telemetry` Prio 5), khóa `STOP mode` ở `idle_aux` (Prio 2) để giữ PLL 72 MHz luôn nóng.<br>- Thu hồi $2,81\%$ CPU và loại bỏ toàn bộ nhiễu DMA/IPC phụ. | **0 trễ deadline** (Trừ khi lỗi tiêm task giả ở Priority $\ge 8$ — đã khai báo trước để IWDG phục hồi). |
-| **`TASK_HANG`** | Tiến trình Task & Bộ nhớ Tĩnh dùng chung | 1) Mỗi task phải set bit heartbeat riêng vào `EventGroup`. Task giám sát kiểm tra mỗi `100 ms`; nếu thiếu bit hoặc task ưu tiên cao treo làm đói `idle_aux`.<br>2) Kiểm tra biên stack $< 23\text{ words}$. | - Ghi mã lỗi `watchdog_reset_reason_code`, ID task bị treo và ngữ cảnh `PC / LR / CFSR` vào vùng `.noinit` (kèm canary `0x6C217697` & checksum FNV-1a từ W3.3).<br>- Không nạp `IWDG` (hoặc gọi `NVIC_SystemReset()`) để phần cứng tự phục hồi trong **$\le 296\text{ ms}$**, sau khi reboot bật `W4E3_BIT_WATCHDOG_RECOVERED`. | Phục hồi cứng an toàn trong **$\le 296\text{ ms}$** kèm bằng chứng log `.noinit`. |
+| Kịch bản (`W4.3`) | Nguồn Week | Tài nguyên | Phát hiện & Ngưỡng định lượng | Phản ứng cô lập & Suy giảm có kiểm soát | Ảnh hưởng `control` |
+|---|---|---|---|---|---|
+| **`SENSOR_UNPLUG`** | **W2.1 / W2.2** | `I2C1` & `MPU6050` | `I2C1_ER` (`AF/BERR/ARLO`, $<10\text{ }\mu\text{s}$) hoặc `ulTaskNotifyTake` $>28\text{ ms}$; `control` thấy tuổi mẫu $>3\text{ tick}$ (`W4E1_DESIGN_IMU_STALE_TICKS`). | Set `W4E3_BIT_DEGRADED_MODE_ENTERED`; `imu` chạy tối đa 9 xung SCL trong task context (mở ngắt); `control` dùng safe-hold không block. | **0 trễ deadline** ($R=97\text{ }\mu\text{s} \le 113\text{ }\mu\text{s}$) |
+| **`UART_FLOOD`** | **W3.1** | `USART1 RX`, `DMA1_Ch5`, `StreamBuffer` | `xStreamBufferSendFromISR < len` (`dropped > 0`), cờ `ORE/FE/NE`, hoặc parse shell $>200\text{ ms}$. | Set `W4E3_BIT_DEGRADED_MODE_ENTERED`; mask cả **`USART1 IDLEIE` và `DMA1_Ch5 HTIE/TCIE`** trong `50 ms` cooldown, xả khung lỗi, đình chỉ `shell` & hạ `telemetry` về 10 Hz. | **0 trễ deadline** (cắt bão 1.562,5 Hz) |
+| **`CPU_OVERLOAD`** | **W1.2 / W3.1 / W3.2** | CPU (76%) & Jitter (113 $\mu\text{s}$) | DWT phát hiện jitter $>100\text{ }\mu\text{s}$ (`W4E1_DESIGN_JITTER_ALARM_US`), WCRT $>+12\%$ RTA, hoặc `TIM2` báo CPU $>76\%$. | Vào `HI-Mode`: đình chỉ `shell` (P3) & `telemetry` (P5), khóa `STOP mode` ở `idle_aux` (P2) để giữ PLL 72 MHz luôn nóng; thu hồi $2,81\%$ CPU. | **0 trễ deadline** *(trừ task giả Prio $\ge 8$ $\rightarrow$ IWDG xử lý)* |
+| **`TASK_HANG`** | **W2.4 / W3.3** | Liveness & RAM tĩnh | Mặt nạ heartbeat trên `StaticEventGroup` (chỉ kiểm vai trò đang chạy; `shell` chờ SB timeout $\le 50\text{ ms}$) thiếu bit sau `100 ms`; HWM $<23\text{ w}$; HardFault. | Ghi ID task treo, `PC/LR/CFSR` và `reset_reason` vào `.noinit` (canary `0x6C217697`, FNV-1a); kích hoạt IWDG/NVIC reset trong **$\le 296\text{ ms}$** (prescaler `/8`, reload `1109` an toàn cho LSI 30–60 kHz). | Phục hồi cứng trong **$\le 296\text{ ms}$** |
 
 ---
 
-## 3. Giải thích sai lệch định lượng (Từ Ước lượng Sơ bộ sang Bảng RTA Duyệt Cuối)
+## 3. Giải thích Sai lệch Định lượng (Ước lượng Sơ bộ vs Bảng RTA Chính thức)
 
-Khi xây dựng bảng RTA cho W4.1, nếu chỉ lấy thời gian chạy thuật toán thuần túy mà bỏ qua chi phí ngắt và phục hồi phần cứng từ số đo thực tế tuần 1–3 sẽ dẫn tới sai lệch nghiêm trọng. Bảng dưới đây định lượng từng khoản hiệu chỉnh giữa **Ước lượng ngây thơ (Naive Estimate)** và **Bảng Thiết kế Chính thức (`PREDICTION.md` / `W4E1_RTA_TABLE`)**:
-
-| Vai trò | $C_{\text{naive}}$ ($\mu\text{s}$) | $C_{\text{approved}}$ ($\mu\text{s}$) | Độ lệch $\Delta C$ ($\mu\text{s}$) | Định lượng nguồn gốc chênh lệch từ dữ liệu thực đo W1–W3 |
+| Vai trò | $C_{\text{naive}}$ ($\mu\text{s}$) | $C_{\text{approved}}$ ($\mu\text{s}$) | $\Delta C$ ($\mu\text{s}$) | Định lượng nguồn gốc hiệu chỉnh từ dữ liệu W1–W3 |
 |---|---:|---:|---:|---|
-| `control` | 55 | **90** | **+35 µs** | Cộng thêm: (1) Trễ vào/ra `TIM3_IRQHandler` + chuyển ngữ cảnh `PendSV` ở `-O2` ($244\text{ cycles} \approx 3,4\text{ }\mu\text{s}$ từ W1.2, tổng $+8\text{ }\mu\text{s}$); (2) Nhánh kiểm tra mẫu cũ & dự phóng an toàn khi mất IMU ($+11\text{ }\mu\text{s}$); (3) Nhiễu che ngắt tối đa từ 1 sự kiện ISR ngoại vi đang chạy dở ($+16\text{ }\mu\text{s}$). |
-| `imu` | 105 | **260** | **+155 µs** | Cộng thêm: (1) Tổng thời gian CPU thực thi trong 11 lần ngắt `I2C1_EV/ER` của một chu kỳ đọc 6–14 byte ($1,0\text{--}5,58\text{ }\mu\text{s}$/lần từ W2.1 $\Rightarrow +35\text{ }\mu\text{s}$); (2) Toàn bộ nhánh **I2C1 Bus Recovery** trong ngữ cảnh task khi SDA bị kẹt (chuyển GPIO + phát 9 xung SCL $90\text{ }\mu\text{s}$ + tạo START/STOP $17,75\text{ }\mu\text{s}$ + nạp lại `CCR/TRISE` $12,25\text{ }\mu\text{s} \Rightarrow +120\text{ }\mu\text{s}$). |
-| `telemetry` | 150 | **180** | **+30 µs** | Cộng thêm: Chi phí tính CRC32 phần mềm trên khung 70 B ($70 \times 110\text{ cycles} = 7.700\text{ cycles} \approx 107\text{ }\mu\text{s}$ theo W3.1) cộng thao tác cấu hình `DMA1_Channel4` và xử lý ngắt Transfer Complete ($+30\text{ }\mu\text{s}$). |
-| `shell` | 350 | **420** | **+70 µs** | Cộng thêm: Chi phí ngắt `USART1 IDLE` + `DMA1_Channel5` chép vòng vào `StreamBuffer` ($220\text{ cycles} + 12\text{ cycles/B}$ theo W3.1 $\approx +25\text{ }\mu\text{s}$) và chi phí định dạng chuỗi phản hồi vào `reply_buf` ($+45\text{ }\mu\text{s}$). |
-| `idle_aux` | 180 | **250** | **+70 µs** | Cộng thêm: Chi phí quét mảng TCB trong `uxTaskGetSystemState()` và 5 lần gọi `uxTaskGetStackHighWaterMark()` ($+50\text{ }\mu\text{s}$) cộng phép chia 64-bit hiệu chuẩn tần số `RTC LSI` theo `HSE` từ W3.2 ($+20\text{ }\mu\text{s}$). |
+| `control` | 62 | **97** | **+35** | Thuật toán cơ sở $62 = 1$ (SPSC W2.2) $+ 56$ (PID) $+ 5$ (status/HB). Cộng: `TIM3` ISR + context switch W1.2 (`+8`), nhánh safe-hold (`+11`), 1 lần ISR UART RX W3.1 (`+16`). |
+| `imu` | 105 | **332** | **+227** | Cơ sở $105 = 7$ (wake) $+ 98$ (convert + SPSC). Cộng: 19 lần ISR `I2C1_EV/ER` đọc 14 B ở trần $5,583\text{ }\mu\text{s}$ đo ở W2.1 (`+107`), cộng recovery 9 xung SCL + START/STOP + re-init (`+120`). |
+| `telemetry` | 150 | **180** | **+30** | Cộng chi phí cấu hình `DMA1_Ch4` TX 1 Mbps và ngắt TC trên nền CRC32 70 B ($107\text{ }\mu\text{s}$, W3.1). |
+| `shell` | 350 | **420** | **+70** | Cộng ISR `USART1 IDLE` + `DMA1_Ch5` chép 70 B vào `StreamBuffer` (`+25`, W3.1) và format `reply_buf` (`+45`). |
+| `idle_aux` | 180 | **250** | **+70** | Cộng `uxTaskGetSystemState` (`TIM2` W3.1) + 5$\times$`uxTaskGetStackHighWaterMark` (`+50`) và chia 64-bit hiệu chuẩn LSI W3.2 (`+20`). |
 
 ---
 
-## 4. Trả lời Câu hỏi Trade-off: Chứng minh Tính Tối ưu của Thứ tự Priority
+## 4. Trả lời Câu hỏi Trade-off: Thứ tự Priority & IPC Không khóa
 
-Thiết kế chọn thứ tự ưu tiên **Rate Monotonic / Criticality-Monotonic** nghiêm ngặt khớp với [week4/ex2/include/params.h](../ex2/include/params.h):
+Thiết kế bám sát thứ tự **Rate-Monotonic / Criticality-Monotonic** và `W4E2_TASK_PRIORITY = {2, 3, 5, 7, 8}` (trong `week4/ex2/include/params.h`, sinh từ `gen_params.py`):
 $$\text{Priority}(\texttt{control}=8) > \text{Priority}(\texttt{imu}=7) > \text{Priority}(\texttt{telemetry}=5) > \text{Priority}(\texttt{shell}=3) > \text{Priority}(\texttt{idle\_aux}=2)$$
 
-Dưới đây là chứng minh định lượng bằng chính công thức RTA rằng **bất kỳ hoán vị nào làm thay đổi vị trí của các task trên đều dẫn tới vi phạm ràng buộc Jitter (`113 µs`), vỡ Deadline hoặc sụp đổ cơ chế bảo vệ Mixed-Criticality**:
+- **Phạm vi chứng minh**: Bảng dưới chứng minh **mọi hoán vị đưa task khác lên trên `control`** hoặc **dùng Mutex chặn thay cho SPSC** đều phá vỡ trần jitter `113 µs`. Riêng hoán vị giữa 2 task LO (`telemetry` $\leftrightarrow$ `shell`) vẫn schedulable ($R_{telemetry} = 180 + 2\cdot 97 + 332 + 420 = 1.126 \le 10.000\text{ }\mu\text{s}$), nhưng đánh mất thứ tự Rate-Monotonic và trái `W4E2_TASK_PRIORITY`.
 
-| Phương án Hoán vị Priority | Phép tính RTA cho Task bị ảnh hưởng | Kết quả $R_i$ ($\mu\text{s}$) | Ngưỡng cho phép ($\mu\text{s}$) | Kết luận & Nguyên nhân Thất bại |
+| Phương án so sánh | Phép tính RTA cho `control` | $R_{control}$ ($\mu\text{s}$) | Trần ($\mu\text{s}$) | Kết luận |
 |---|---|---:|---:|---|
-| **Thiết kế chuẩn (Đã chọn)**<br>`control(8) > imu(7) > telemetry(5) > shell(3) > idle_aux(2)` | $R_{control} = C_{control} = 90$<br>$R_{imu} = 260 + \lceil 260/1000 \rceil \times 90 = 350$ | **$R_{control} = 90$**<br>**$R_{imu} = 350$** | Jitter $\le 113$<br>$D_{imu} \le 2.000$ | **ĐẠT TUYỆT ĐỐI** (Biên jitter còn dư $23\text{ }\mu\text{s}$). |
-| **Hoán vị 1: Đảo `imu` lên trên `control`**<br>`imu(8) > control(7) > ...` | $R_{control} = C_{control} + \lceil R_{control} / T_{imu} \rceil \times C_{imu}$<br>- Ở `LO-Mode`: $70 + 140 = 210\text{ }\mu\text{s}$<br>- Ở `HI-Mode`: $90 + 260 = 350\text{ }\mu\text{s}$ | **$210\text{ }\mu\text{s}$ (LO)**<br>**$350\text{ }\mu\text{s}$ (HI)** | Jitter $\le \mathbf{113}$ | **VI PHẠM NGHIÊM TRỌNG**: Ngay cả ở chế độ bình thường (`LO-Mode`), `imu` đã làm `control` trễ $210\text{ }\mu\text{s}$ (vượt trần jitter $+97\text{ }\mu\text{s}$); khi `imu` chạy Bus Recovery thì vượt trần **$+237\text{ }\mu\text{s}$**! |
-| **Hoán vị 2: Đặt `telemetry` lên trên `control`**<br>`telemetry(8) > control(7) > ...` | $R_{control} = C_{control} + C_{telemetry} = 90 + 180 = 270\text{ }\mu\text{s}$ | **$270\text{ }\mu\text{s}$** | Jitter $\le \mathbf{113}$ | **VI PHẠM**: Một tác vụ `LO-Criticality` (`telemetry`) chiếm quyền của `HI-Criticality` (`control`), phá vỡ trần jitter $113\text{ }\mu\text{s}$ (vượt $+157\text{ }\mu\text{s}$). |
-| **Hoán vị 3: Đặt `shell` lên trên `control` hoặc `imu`**<br>`shell(8) > control(7) > imu(5) ...` | $R_{control} = 90 + 420 = 510\text{ }\mu\text{s}$<br>Khi `UART_FLOOD` (khung đến dồn dập), `shell` chiếm CPU liên tục | **$510\text{ }\mu\text{s}$**<br>*(Flood: $\rightarrow \infty$)* | Jitter $\le \mathbf{113}$ | **SỤP ĐỔ HỆ THỐNG**: Đảo ngược độ quan trọng (Criticality Inversion); khi bị flood UART, `shell` làm đói CPU của `control` và `imu`. |
-| **Hoán vị 4: Dùng chung Mutex chặn giữa `imu` và `control`** *(thay vì Lock-free SPSC)* | Nếu `imu` giữ Mutex trong suốt giao dịch I2C1 trên dây ($880\text{ }\mu\text{s}$ đo ở W2.1):<br>$R_{control} = C_{control} + B_{control} = 90 + 880 = 970\text{ }\mu\text{s}$ | **$970\text{ }\mu\text{s}$** | Jitter $\le \mathbf{113}$ | **VI PHẠM**: Blocking time $B_{control} = 880\text{ }\mu\text{s}$ làm đứt trần jitter $113\text{ }\mu\text{s}$ dù `control` có Priority cao nhất. Do đó bắt buộc dùng **SPSC / Seqlock không khóa** ($B_{control} = 0$). |
+| **Thiết kế chuẩn (`control=8 > imu=7 > ...`)** | $R_{control} = C_{control}$ | **97** | $\le 113$ | **ĐẠT** (dư $16\text{ }\mu\text{s}$). |
+| **Đảo `imu(8) > control(7)`** | LO: $70 + 165 = 235$; HI: $97 + 332 = 429$ | **235 / 429** | $\le 113$ | **VI PHẠM** (vượt $+122\text{ / }+316\text{ }\mu\text{s}$). |
+| **Đặt `telemetry(8) > control(7)`** | $97 + 180 = 277$ | **277** | $\le 113$ | **VI PHẠM** (task LO chặn task HI, vượt $+164\text{ }\mu\text{s}$). |
+| **Đặt `shell(8) > control(7)`** | $97 + 420 = 517$ (khi flood $\rightarrow \infty$) | **517+** | $\le 113$ | **SỤP ĐỔ** (Criticality Inversion khi `UART_FLOOD`). |
+| **Dùng `I2C1 Mutex` chặn giữa `imu` và `control`** | $C_{control} + B_{bus,400k} = 97 + 433 = 530$ | **530** | $\le 113$ | **VI PHẠM** $\Rightarrow$ bắt buộc dùng **SPSC lock-free** (W2.2). |
+
+---
+
+## 5. Tóm tắt Kiểm chứng, Phân tích Độ nhạy & Khoảng trống cần đo ở W4.2 / W4.3
+
+### 5.1. Kiểm chứng tự động & 6 Quyết định Hiệu chỉnh Cốt lõi
+- Toàn bộ toán học RTA (`LO`/`HI`/`E2E`/`J_imu`), CPU, RAM (`11.776 B`), đối chiếu SSOT trên 5 file, `arm-none-eabi-gcc -fsyntax-only -std=c99 -Wall -Wextra -Werror -pedantic` và quy tắc `check_api.sh` đều kiểm chứng một lệnh bằng `py tools/check_w4e1.py` (**PASS**).
+- **6 điểm hiệu chỉnh quan trọng đã khóa trong hồ sơ**:
+  1. **I2C1 400 kHz cho burst 14 B (`accel+gyro`)**: 100 kHz kéo bus $\approx 1.619\text{ }\mu\text{s}$ làm $R_{imu}^{e2e} \approx 2.170\text{ }\mu\text{s} > 2.000\text{ }\mu\text{s}$; nâng 400 kHz đưa $R_{imu}^{e2e} = 862\text{ }\mu\text{s}$.
+  2. **Giảm vòng `DMA1_Ch5` RX 256 $\rightarrow$ 128 B & mask cả `DMA1_Ch5` khi flood**: Giữ mỗi lần chép ISR $\le 64\text{ B}$ ($\approx 13,7\text{ }\mu\text{s} \le 16\text{ }\mu\text{s}$ trong $C_{HI}(control)$) và dập bão ngắt 1.562,5 Hz khi flood liên tục.
+  3. **Đồng bộ pha `TIM3` lệch `SysTick` & kích `imu` bằng `TIM3 ÷2`**: Ngăn `SysTick` và chuỗi `I2C1_EV` rơi vào cửa sổ `[0..97 µs]` của `control`.
+  4. **Ngưỡng báo động jitter `100 µs` (< trần `113 µs`) & ngưỡng stale `> 3 tick`**: Phát hiện sớm `CPU_OVERLOAD` trước khi vỡ hạn và tránh báo stale giả khi tuổi mẫu khỏe đạt 3 tick.
+  5. **Định cỡ `IWDG` theo biên LSI 30–60 kHz**: Prescaler `/8`, reload `1109` đảm bảo timeout $\le 296\text{ ms}$ ở 30 kHz và $\ge 148\text{ ms}$ ở 60 kHz ($>$ chu kỳ kick `100 ms`).
+  6. **Mặt nạ Heartbeat động & `UART TX Mutex`**: HI-Mode bỏ `telemetry`/`shell` khỏi mặt nạ để không kích `TASK_HANG` giả; `shell` và `telemetry` chia sẻ `USART1 TX` qua `StaticSemaphore_t` (không chạm `control`).
+
+### 5.2. Phân tích Độ nhạy (Cận bảo thủ khi `imu` gặp recovery dài: $C_{HI}(imu) = 729\text{ }\mu\text{s}$)
+Giả sử $C_{HI}(imu) = 7 + 98 + 107\text{ (19 ISR trần)} + 427\text{ (wall-clock recovery lớn nhất W2.1)} + 90\text{ (9 xung SCL)} = 729\text{ }\mu\text{s}$, bus wait $S = 433\text{ }\mu\text{s} \Rightarrow R_{imu}^{e2e} = 1.356\text{ }\mu\text{s}$ và $J_{imu} = 1.356 - 729 = \mathbf{627\text{ }\mu\text{s}}$:
+
+| Vai trò | $R_{HI}$ chính thức ($\mu\text{s}$) | $R_{HI}$ bảo thủ thuần CPU ($\mu\text{s}$) | $R_{HI}$ bảo thủ có $J_{imu}=627\text{ }\mu\text{s}$ ($\mu\text{s}$) | Deadline $D$ ($\mu\text{s}$) |
+|---|---:|---:|---:|---:|
+| `control` | 97 | 97 | **97** | 1.000 *(jitter 113)* |
+| `imu` (CPU / E2E chờ bus) | 429 / 862 | 826 / 1.356 | **826 / 1.356** | 2.000 |
+| `telemetry` | 609 | 1.103 | **1.103** | 10.000 |
+| `shell` | 1.126 | 1.523 | **2.349** | 200.000 |
+| `idle_aux` | 1.376 | 1.773 | **2.599** | 100.000 |
+| **CPU (5 task / tổng kèm ISR)** | **29,19% / 31,29%** | **49,04% / 51,14%** | **49,04% / 51,14%** | **76,00%** |
+
+### 5.3. Năm Khoảng trống Dữ liệu Bắt buộc phải Đo trên Board ở W4.2 / W4.3
+1. Đo WCET thực tế từng vai trò bằng `DWT->CYCCNT` (PID `control`, quy đổi `imu`, parser `shell`, housekeeping `idle_aux`).
+2. Đo sườn lên SCL ($\le 300\text{ ns}$), số lần vào ISR và thời gian bus của burst 14 B ở **I2C1 400 kHz** trên MPU6050 thật.
+3. Đo thời gian CPU thực tế của nhánh phát 9 xung SCL recovery (W2.1 có `PULSES=0`) khi giữ SDA LOW cưỡng bức.
+4. Đo độ trễ lớn nhất của kernel critical section (`BASEPRI = 5`) bên trong cửa sổ `control` (phần này trừ vào biên jitter `16 µs`).
+5. Kiểm tra `dma_late = 0`, `dropped = 0` với vòng `DMA1_Ch5` RX `128 B` ở `1 Mbps` và đo kích thước thật qua file `.map` / `uxTaskGetStackHighWaterMark()`.

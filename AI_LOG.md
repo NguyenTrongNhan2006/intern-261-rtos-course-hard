@@ -38,6 +38,10 @@ Prompt tóm tắt: cung cấp blocking_app.c, priority_ceiling.c, FreeRTOSConfig
 
 Prompt tóm tắt: tiếp tục từ buggy.log.txt, kiểm tra có cần logic analyzer không, sau đó rà prediction, điền report và kiểm tra build/API cho cả buggy/fixed. Em nạp và thu hai log UART đầy đủ; AI đối chiếu source, đếm lại 1000 marker gửi và 500 marker nhận mỗi lượt. Buggy nhận 500 sự kiện, fixed nhận count 2 trong cả 500 lần nên tổng 1000; TRACE_DROPPED bằng 0. AI tách EV/Gantt, tạo CSV và biểu đồ từ log gốc, ghi rõ Gantt chỉ bao phủ khoảng 0.29 s còn EV bao phủ toàn lượt khoảng 5 s. Báo cáo giữ cycle đo được 297/571 và 303/581: notification không nhanh hơn trong benchmark tự notify/wait này. RAM 460/380 byte là chi phí đối tượng; hai image vẫn giữ semaphore benchmark và cùng dùng 6800 byte RAM. Giữ các con số prediction định lượng đã có, ghi rõ chưa có commit prediction định lượng riêng trước đo; không chỉnh lịch sử hoặc số dự đoán để khớp kết quả. Build/API sau rà hồ sơ tách khỏi bằng chứng chạy board.
 
+## W4E1 – Thiết kế hệ thống mixed-criticality (trên giấy)
+
+Prompt tóm tắt: thảo luận bản chất kiến trúc W4.1, kiểm tra tham số theo MSSV 2452882, chạy RTA bằng tay (LO-mode, HI-mode, AMC-rtb và thời gian chờ bus I2C1), quy hoạch ngân sách RAM tĩnh 100%, lập ma trận 4 kịch bản fault, đồng bộ `include/mixed_criticality_design.h` và xuất sơ đồ kiến trúc (PDF vector, HTML, GraphML) cùng bản `.docx` review. AI hỗ trợ rà soát tính nhất quán số liệu với W1–W3, đề xuất nâng I2C1 lên 400 kHz cho burst 14 byte, giảm vòng DMA RX về 128 B, bổ sung mask `DMA1_Ch5` khi `UART_FLOOD`, và viết script kiểm tra `tools/check_w4e1.py`. Em trực tiếp đối chiếu từng ràng buộc, duyệt đề xuất chỉnh sửa, kiểm tra sơ đồ và chịu trách nhiệm bảo vệ toàn bộ phép tính RTA/trade-off trước khi sang W4.2.
+
 ## Giới hạn kiểm chứng
 
 Build, API check và host test không chứng minh firmware chạy đúng trên phần cứng. Các kết quả phải gắn với đúng phiên bản, log hoặc ảnh đã thu. Em cần tự giải thích code và đối chiếu dự đoán với phép đo khi bảo vệ bài.
