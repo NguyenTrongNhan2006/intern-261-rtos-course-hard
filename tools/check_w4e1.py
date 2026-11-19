@@ -6,8 +6,8 @@ Exit 0 = every check passed, 1 = at least one FAIL.
 
 Single source of truth is week4/ex1/include/mixed_criticality_design.h.
 Recomputes LO/HI RTA, imu E2E completion with bus wait, CPU, RAM and checks
-PREDICTION.md, REPORT.md, w4e1_architecture.html, .graphml, and PDF diagrams.
-Works on both Windows (Python fallback for check_api.sh) and Linux/macOS.
+PREDICTION.md, REPORT.md, PDF vector diagrams, GitHub Markdown math hygiene,
+C99 syntax (arm-none-eabi-gcc) and API rules (check_api.sh / Windows fallback).
 """
 import glob
 import math
@@ -17,7 +17,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EX1 = os.path.join(ROOT, "week4", "ex1")
@@ -96,6 +95,23 @@ def check_api_python(target_dir):
     return errors
 
 
+def check_github_markdown_math(name, text):
+    """Verify no broken inline $...$ or GitHub MathJax traps remain."""
+    # Remove display math blocks ($$\n...\n$$) first and validate their contents
+    blocks = re.findall(r"(?m)^\$\$\n(.*?)\n\$\$", text, re.S)
+    for b in blocks:
+        if re.search(r"(?<!\\)%", b):
+            return False, f"{name}: unescaped % inside $$ math block"
+        if re.search(r"\\text(?:tt)?\{[^}]*_", b):
+            return False, f"{name}: underscore inside \\text/\\texttt in $$ math block"
+        if "*" in b:
+            return False, f"{name}: raw * inside $$ math block (use \\ast)"
+    stripped = re.sub(r"(?m)^\$\$\n.*?\n\$\$", "", text, flags=re.S)
+    if "$" in stripped:
+        return False, f"{name}: stray inline $ found (use Unicode or clean $$ block)"
+    return True, f"{name} GitHub Markdown/MathJax syntax clean ({len(blocks)} display block)"
+
+
 # ------------------------------------------------------------------ params
 tmp = tempfile.mkdtemp(prefix="w4e1_params_")
 try:
@@ -158,16 +174,14 @@ try:
 
     # ------------------------------------------------------- documentation
     docs = {k: read(os.path.join(EX1, f)) for k, f in [
-        ("PREDICTION", "PREDICTION.md"), ("REPORT", "REPORT.md"),
-        ("HTML", "w4e1_architecture.html"), ("GraphML", "w4e1_architecture.graphml")]}
+        ("PREDICTION", "PREDICTION.md"), ("REPORT", "REPORT.md")]}
     for name, text in docs.items():
         ctl = re.findall(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", text)
         check(not ctl, "%s has no stray control characters" % name)
-    ET.fromstring(docs["GraphML"])
-    check(True, "w4e1_architecture.graphml parses cleanly as valid XML")
-    for name in ("REPORT", "HTML", "GraphML"):
-        found = [tuple(map(int, m)) for m in re.findall(r"C_HI (\d+) / R_HI (\d+)", docs[name])]
-        check(sorted(found) == sorted(zip(CHI, RHI)), "%s diagram labels C_HI/R_HI == header" % name)
+        ok_md, msg_md = check_github_markdown_math(name, text)
+        check(ok_md, msg_md)
+    found = [tuple(map(int, m)) for m in re.findall(r"C_HI (\d+) / R_HI (\d+)", docs["REPORT"])]
+    check(sorted(found) == sorted(zip(CHI, RHI)), "REPORT diagram labels C_HI/R_HI == header")
     pred = {}
     for m in re.finditer(r"^\| `(\w+)` \| \*\*(?:HI|LO)\*\* \|([^\n]*)", docs["PREDICTION"], re.M):
         cells = [c.strip() for c in m.group(2).split("|")]
@@ -181,12 +195,12 @@ try:
     check([rep.get(r) for r in ROLES] == [[a, b, c, d] for a, b, c, d in zip(CLO, rlo, CHI, rhi)],
           "REPORT §2.1 table (C_LO, R_LO, C_HI, R_HI) == recomputed")
     ram_vi = "{:,}".format(sum(RAM)).replace(",", ".")
-    check(ram_vi in docs["PREDICTION"] and ram_vi in docs["REPORT"] and "{:,}".format(sum(RAM)).replace(",", " ") in docs["HTML"],
-          "RAM total %s quoted in PREDICTION, REPORT and HTML" % ram_vi)
-    for name in ("PREDICTION", "REPORT", "HTML"):
+    check(ram_vi in docs["PREDICTION"] and ram_vi in docs["REPORT"],
+          "RAM total %s quoted in PREDICTION and REPORT" % ram_vi)
+    for name in ("PREDICTION", "REPORT"):
         tot = ("%.2f" % (u_hi + u_bg)).replace(".", ",")
-        check(tot in docs[name], "%s quotes worst-case CPU %s %%" % (name, tot))
-    check(str(WDG_MS) in docs["HTML"] and str(WDG_MS) in docs["REPORT"], "watchdog %d ms quoted" % WDG_MS)
+        check(tot in docs[name], "%s quotes worst-case CPU %s%%" % (name, tot))
+    check(str(WDG_MS) in docs["REPORT"], "watchdog %d ms quoted in REPORT" % WDG_MS)
 
     for pdf_name in ("w4e1_system_architecture.pdf", "w4e1_mode_switch_fsm.pdf"):
         pdf_p = os.path.join(EX1, pdf_name)
@@ -210,8 +224,8 @@ try:
         errs = check_api_python(os.path.join(ROOT, "week4"))
         check(not errs, "check_api.sh equivalent (Python fallback on Windows) on week4" + ("" if not errs else ": " + "; ".join(errs)))
 
-    stray = [f for f in os.listdir(EX1) if f.endswith((".c", ".py", ".png", ".tmp"))]
-    check(not stray, "no source/script/temp files inside week4/ex1 %s" % (stray or ""))
+    stray = [f for f in os.listdir(EX1) if f.endswith((".c", ".py", ".png", ".tmp", ".html", ".graphml"))]
+    check(not stray, "no stray/HTML/GraphML/code files inside week4/ex1 %s" % (stray or ""))
 finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
