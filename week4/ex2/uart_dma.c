@@ -8,6 +8,10 @@
 
 #include <string.h>
 
+#ifndef W4E2_UART_BAUD_BPS
+#define W4E2_UART_BAUD_BPS W4E1_TELEMETRY_BAUD_BPS
+#endif
+
 #define RX_BYTES W4E1_DESIGN_UART_RX_RING_BYTES
 #define RX_COOLDOWN_MS 50u
 #define RX_WAKE_LISTEN_MS 100u
@@ -79,7 +83,7 @@ void w4e2_uart_init(void)
     USART1->CR1 = 0u;
     USART1->CR2 = 0u;
     USART1->CR3 = USART_CR3_DMAT;
-    USART1->BRR = SystemCoreClock / W4E1_TELEMETRY_BAUD_BPS;
+    USART1->BRR = (SystemCoreClock + W4E2_UART_BAUD_BPS / 2u) / W4E2_UART_BAUD_BPS;
     USART1->CR1 = USART_CR1_UE | USART_CR1_TE;
 
     DMA1_Channel4->CCR = 0u;
