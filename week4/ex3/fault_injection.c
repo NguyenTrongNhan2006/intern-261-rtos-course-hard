@@ -154,8 +154,6 @@ static bool request(w4e3_fault_kind_t kind, uint32_t role, bool high, bool wait)
         return false;
     }
     seal_result();
-    (void)xEventGroupClearBits(fault_events, W4E3_BIT_DEGRADED_MODE_ENTERED |
-                                            W4E3_BIT_WATCHDOG_RECOVERED);
     last_result = (w4e3_fault_result_t){ .kind = kind };
     baseline_misses = w4e3_control_misses();
     armed_at = xTaskGetTickCount();
@@ -168,9 +166,16 @@ static bool request(w4e3_fault_kind_t kind, uint32_t role, bool high, bool wait)
     target_role = role;
     api_waiting = wait;
     pending = true;
-    reset_armed = kind == W4E3_FAULT_TASK_HANG || high;
-    const reset_record_t armed = record_for(kind, role, armed_at, RECORD_ARMED);
+    const TickType_t snapshot_tick = armed_at;
+    taskEXIT_CRITICAL();
+
+    (void)xEventGroupClearBits(fault_events, W4E3_BIT_DEGRADED_MODE_ENTERED |
+                                            W4E3_BIT_WATCHDOG_RECOVERED);
+    const reset_record_t armed = record_for(kind, role, snapshot_tick, RECORD_ARMED);
     commit_record(0u, &armed);
+
+    taskENTER_CRITICAL();
+    reset_armed = kind == W4E3_FAULT_TASK_HANG || high;
     taskEXIT_CRITICAL();
 
     if (kind == W4E3_FAULT_SENSOR_UNPLUG) {
@@ -209,6 +214,7 @@ void fault_injection_trigger(w4e3_fault_kind_t kind)
 
 static void observe(w4e3_fault_kind_t kind, uint32_t misses_at_start)
 {
+    bool notify = false;
     taskENTER_CRITICAL();
     if (!reset_armed && (pending ? active_kind == kind : !api_waiting)) {
         if (!pending) {
@@ -225,9 +231,12 @@ static void observe(w4e3_fault_kind_t kind, uint32_t misses_at_start)
         track_result = true;
         active_kind = W4E3_FAULT_COUNT;
         harvest_records();
-        (void)xEventGroupSetBits(fault_events, W4E3_BIT_DEGRADED_MODE_ENTERED);
+        notify = true;
     }
     taskEXIT_CRITICAL();
+    if (notify) {
+        (void)xEventGroupSetBits(fault_events, W4E3_BIT_DEGRADED_MODE_ENTERED);
+    }
 }
 
 void w4e3_fault_observe(w4e3_fault_kind_t kind)
@@ -237,12 +246,16 @@ void w4e3_fault_observe(w4e3_fault_kind_t kind)
 
 void w4e3_fault_observe_uart(uint32_t generation, uint32_t misses_at_start)
 {
+    bool should_observe = false;
     taskENTER_CRITICAL();
     if (generation != uart_generation || (pending && active_kind == W4E3_FAULT_UART_FLOOD)) {
         uart_generation = generation;
-        observe(W4E3_FAULT_UART_FLOOD, misses_at_start);
+        should_observe = true;
     }
     taskEXIT_CRITICAL();
+    if (should_observe) {
+        observe(W4E3_FAULT_UART_FLOOD, misses_at_start);
+    }
 }
 
 bool w4e3_fault_wait_step(TickType_t wait)
@@ -262,11 +275,11 @@ bool w4e3_fault_clear(void)
     pending = false;
     active_kind = W4E3_FAULT_COUNT;
     harvest_records();
-    (void)xEventGroupClearBits(fault_events, W4E3_BIT_DEGRADED_MODE_ENTERED |
-                                            W4E3_BIT_WATCHDOG_RECOVERED);
     w4e3_imu_set_cut(false);
     w4e3_uart_clear_throttle();
     taskEXIT_CRITICAL();
+    (void)xEventGroupClearBits(fault_events, W4E3_BIT_DEGRADED_MODE_ENTERED |
+                                            W4E3_BIT_WATCHDOG_RECOVERED);
     w4e3_leave_hi_mode();
     return true;
 }

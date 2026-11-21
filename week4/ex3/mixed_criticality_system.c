@@ -51,6 +51,7 @@ static volatile bool quiesced, hi_mode, shell_parked, leave_hi_pending;
 static bool load_parked;
 static TaskHandle_t load_task_handle;
 static TaskHandle_t volatile stats_waiter;
+static uint32_t stats_wait_cycles;
 static StaticTask_t load_storage;
 static StackType_t load_stack[128];
 static bool shell_line_open;
@@ -378,6 +379,7 @@ static bool service_shell(TickType_t max_wait)
         }
 
         console.last_command = now;
+        stats_wait_cycles = 0u;
         const bool ok = mixed_criticality_system_shell_exec(command, reply, sizeof reply);
         const TickType_t spent = xTaskGetTickCount() - console.started;
         if (spent < timeout) {
@@ -387,7 +389,8 @@ static bool service_shell(TickType_t max_wait)
             (void)w4e3_uart_send(message, strlen(message), room < tx_wait ? room : tx_wait);
         }
         if (!hi_mode) {
-            w4e3_measure(SHELL, DWT->CYCCNT - start_cycles);
+            const uint32_t elapsed = DWT->CYCCNT - start_cycles;
+            w4e3_measure(SHELL, elapsed > stats_wait_cycles ? elapsed - stats_wait_cycles : 0u);
         }
         if (console.observe_after_ack) {
             console.observe_after_ack = false;
@@ -548,6 +551,7 @@ static void idle_aux_task(void *arg)
                  jitter > W4E1_DESIGN_JITTER_ALARM_US * (SystemCoreClock / 1000000u))) {
                 w4e3_set_hi_mode();
             }
+            w4e3_measure(IDLE_AUX, DWT->CYCCNT - start);
         }
         if (shell_parked) {
             /* Bounded maintenance receive while the LO shell stays suspended. */
@@ -560,7 +564,6 @@ static void idle_aux_task(void *arg)
                 finish_shell_handoff();
             }
         }
-        w4e3_measure(IDLE_AUX, DWT->CYCCNT - start);
     }
 }
 
@@ -630,6 +633,7 @@ void w4e3_wait_for_stats_window(void)
     }
     /* uxTaskGetSystemState holds the scheduler while scanning the stacks.
      * Start after a fresh control release to leave time before the next one. */
+    const uint32_t wait_start = DWT->CYCCNT;
     (void)ulTaskNotifyTakeIndexed(W4E3_STATS_NOTIFY_INDEX, pdTRUE, 0u);
     taskENTER_CRITICAL();
     stats_waiter = xTaskGetCurrentTaskHandle();
@@ -638,6 +642,7 @@ void w4e3_wait_for_stats_window(void)
     taskENTER_CRITICAL();
     stats_waiter = NULL;
     taskEXIT_CRITICAL();
+    stats_wait_cycles += DWT->CYCCNT - wait_start;
 }
 
 uint32_t w4e3_control_misses(void)

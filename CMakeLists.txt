@@ -775,7 +775,8 @@ target_include_directories(w4e3 PRIVATE
     third_party/FreeRTOS-Kernel/include
     third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
 )
-target_compile_definitions(w4e3 PRIVATE STM32F103xB)
+target_compile_definitions(w4e3 PRIVATE STM32F103xB
+    $<$<BOOL:${W4E2_UART_BAUD_OVERRIDE}>:W4E2_UART_BAUD_BPS=${W4E2_UART_BAUD_OVERRIDE}>)
 target_compile_options(w4e3 PRIVATE -O2 -g3 -Wdouble-promotion)
 target_link_options(w4e3 PRIVATE
     "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
