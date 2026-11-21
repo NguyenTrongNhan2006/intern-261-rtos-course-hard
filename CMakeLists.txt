@@ -740,3 +740,63 @@ if(OPENOCD_EXECUTABLE)
         VERBATIM USES_TERMINAL
     )
 endif()
+
+# W4.3: Static verification, fault injection and watchdog post-mortem.
+add_executable(w4e3
+    platform/startup.c
+    platform/system.c
+    platform/gpio.c
+    week4/ex3/main.c
+    week4/ex3/mixed_criticality_system.c
+    week4/ex3/control_clock.c
+    week4/ex3/imu_i2c.c
+    week4/ex3/uart_dma.c
+    week4/ex3/power.c
+    week4/ex3/fault_injection.c
+    week4/ex3/verification.c
+    week3/ex1/runtime_stats.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/event_groups.c
+    third_party/FreeRTOS-Kernel/stream_buffer.c
+    third_party/FreeRTOS-Kernel/timers.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+set_target_properties(w4e3 PROPERTIES SUFFIX ".elf")
+target_include_directories(w4e3 PRIVATE
+    week4/ex3/include
+    week4/ex2/include
+    week3/ex1/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+target_compile_definitions(w4e3 PRIVATE STM32F103xB)
+target_compile_options(w4e3 PRIVATE -O2 -g3 -Wdouble-promotion)
+target_link_options(w4e3 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    # Keep the published harness API reachable in the final ELF.
+    -Wl,--undefined=fault_injection_init
+    -Wl,--undefined=fault_injection_trigger
+    -Wl,--undefined=fault_injection_get_verification_sample
+    -Wl,--undefined=fault_injection_get_last_result
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w4e3.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w4e3_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg -c "transport select swd"
+            -f target/stm32f1x.cfg -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w4e3>} verify reset exit"
+        DEPENDS w4e3
+        VERBATIM USES_TERMINAL
+    )
+endif()
