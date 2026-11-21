@@ -684,3 +684,56 @@ if(OPENOCD_EXECUTABLE)
         USES_TERMINAL
     )
 endif()
+
+
+# W4.2: Mixed-criticality control, IMU, telemetry, shell and low-power idle.
+add_executable(w4e2
+    platform/startup.c
+    platform/system.c
+    platform/gpio.c
+    week4/ex2/main.c
+    week4/ex2/mixed_criticality_system.c
+    week4/ex2/control_clock.c
+    week4/ex2/imu_i2c.c
+    week4/ex2/uart_dma.c
+    week4/ex2/power.c
+    week3/ex1/runtime_stats.c
+    third_party/FreeRTOS-Kernel/tasks.c
+    third_party/FreeRTOS-Kernel/list.c
+    third_party/FreeRTOS-Kernel/queue.c
+    third_party/FreeRTOS-Kernel/event_groups.c
+    third_party/FreeRTOS-Kernel/stream_buffer.c
+    third_party/FreeRTOS-Kernel/timers.c
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3/port.c
+)
+
+set_target_properties(w4e2 PROPERTIES SUFFIX ".elf")
+target_include_directories(w4e2 PRIVATE
+    week4/ex2/include
+    week3/ex1/include
+    platform/include
+    third_party/CMSIS_5/CMSIS/Core/Include
+    third_party/cmsis-device-f1/Include
+    third_party/FreeRTOS-Kernel/include
+    third_party/FreeRTOS-Kernel/portable/GCC/ARM_CM3
+)
+target_compile_definitions(w4e2 PRIVATE STM32F103xB)
+target_compile_options(w4e2 PRIVATE -O2 -g3 -Wdouble-promotion)
+target_link_options(w4e2 PRIVATE
+    "-T${CMAKE_SOURCE_DIR}/platform/linker/stm32f103c8.ld"
+    -nostartfiles
+    "-Wl,-Map=${CMAKE_CURRENT_BINARY_DIR}/w4e2.map"
+    -Wl,--print-memory-usage
+    -Wl,-z,noexecstack
+)
+if(OPENOCD_EXECUTABLE)
+    add_custom_target(w4e2_flash
+        COMMAND "${OPENOCD_EXECUTABLE}"
+            -f interface/stlink.cfg -c "transport select swd"
+            -f target/stm32f1x.cfg -c "adapter speed 100"
+            -c "reset_config none"
+            -c "program {$<TARGET_FILE:w4e2>} verify reset exit"
+        DEPENDS w4e2
+        VERBATIM USES_TERMINAL
+    )
+endif()

@@ -33,7 +33,10 @@ WEAK_DEFAULT_HANDLER(I2C1_ER_IRQHandler);
 /* W2.2: Handler mặc định nếu ứng dụng chưa cung cấp ISR TIM2. */
 WEAK_DEFAULT_HANDLER(TIM2_IRQHandler);
 /* W3.1: Alias yếu cho ngắt nhận. Bài cũ dùng Default_Handler nếu không định nghĩa riêng. */
+WEAK_DEFAULT_HANDLER(DMA1_Channel4_IRQHandler);
 WEAK_DEFAULT_HANDLER(DMA1_Channel5_IRQHandler);
+WEAK_DEFAULT_HANDLER(TIM3_IRQHandler);
+WEAK_DEFAULT_HANDLER(EXTI15_10_IRQHandler);
 WEAK_DEFAULT_HANDLER(USART1_IRQHandler);
 /* STEP W3.2: Alias yếu giữ vector mặc định cho các target chưa dùng báo thức. */
 void RTCAlarm_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
@@ -70,7 +73,7 @@ const isr_handler_t vector_table[] = {
 
     /* IRQ 11–17: DMA1 Channel 1–7 */
     Default_Handler, Default_Handler, Default_Handler,
-    Default_Handler, DMA1_Channel5_IRQHandler, Default_Handler,
+    DMA1_Channel4_IRQHandler, DMA1_Channel5_IRQHandler, Default_Handler,
     Default_Handler,
 
     /* IRQ 18–22: ADC1_2, USB/CAN, CAN, CAN */
@@ -86,7 +89,7 @@ const isr_handler_t vector_table[] = {
 
       /* W2.2: Nối IRQ28 với ISR producer trong ring_app.c. */
 TIM2_IRQHandler,   /* IRQ28: TIM2. */
-Default_Handler,  /* IRQ29: TIM3. */
+TIM3_IRQHandler,   /* IRQ29: TIM3. */
 Default_Handler,  /* IRQ30: TIM4. */
 
     /* IRQ 31–34: I2C1 và I2C2 */
@@ -100,7 +103,7 @@ Default_Handler,  /* IRQ30: TIM4. */
     Default_Handler, Default_Handler,
 
     /* IRQ 40–42: EXTI15_10, RTCAlarm, USBWakeUp */
-    Default_Handler, RTCAlarm_IRQHandler, Default_Handler
+    EXTI15_10_IRQHandler, RTCAlarm_IRQHandler, Default_Handler
 };
 
 void Reset_Handler(void)
